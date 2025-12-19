@@ -24,7 +24,7 @@ jobs:
           VER=$(python setup.py --version)
           python scripts/remove_alpha.py
       - name: "Generate release changelog"
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        uses: heinrichreimer/github-changelog-generator-action@v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
         id: changelog

@@ -5,25 +5,27 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "jurebes"
 dynamic = ["version"]
-description = "A intent parser from OpenVoiceOS"
+description = "Classical-ML intent classification research framework"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 authors = [{ name = "JarbasAI", email = "jarbasai@mailfence.com" }]
 dependencies = [
+    "scikit-learn>=1.4",
+    "joblib",
     "ovos-utils",
     "ovos-bus-client",
     "ovos-config",
     "ovos-plugin-manager",
-    "ovos-classifiers[sklearn]>=0.0.0a1",
-    "padacioso",
-    "quebra-frases",
-    "nltk",
     "langcodes",
 ]
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
+hf = ["datasets"]
+
+[project.scripts]
+jurebes = "jurebes.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/OpenVoiceOS/jurebes"

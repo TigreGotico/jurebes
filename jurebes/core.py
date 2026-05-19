@@ -133,8 +133,16 @@ class IntentClassifier:
     def predict(self, utterance: str) -> IntentResult:
         if not self._fitted:
             raise RuntimeError("classifier not fitted")
-        ranked = self.predict_proba(utterance)
-        return ranked[0] if ranked else IntentResult(None, 0.0, {}, utterance)
+        try:
+            ranked = self.predict_proba(utterance)
+            return ranked[0] if ranked else IntentResult(None, 0.0, {}, utterance)
+        except (AttributeError, NotImplementedError):
+            pred = self.estimator.predict([utterance])[0]
+            ents = self._extract_entities(utterance)
+            return IntentResult(
+                intent=str(pred), confidence=1.0,
+                entities=dict(ents), utterance=utterance,
+            )
 
     def predict_proba(self, utterance: str) -> List[IntentResult]:
         if not self._fitted:
@@ -154,7 +162,6 @@ class IntentClassifier:
             raise RuntimeError("classifier not fitted")
         if not utterances:
             return []
-        preds = self.estimator.predict(list(utterances))
         # If estimator has predict_proba, get top-1 confidence per row in one shot.
         try:
             probs = self.estimator.predict_proba(list(utterances))
@@ -169,6 +176,7 @@ class IntentClassifier:
                 ))
             return results
         except (AttributeError, NotImplementedError):
+            preds = self.estimator.predict(list(utterances))
             results = []
             for utt, pred in zip(utterances, preds):
                 ents = self._extract_entities(utt)
@@ -179,8 +187,10 @@ class IntentClassifier:
             return results
 
     def save(self, path: Union[str, Path]) -> None:
+        from jurebes.version import __version__ as _jv
         joblib.dump(
             {
+                "_jurebes_version": _jv,
                 "estimator": self.estimator,
                 "tagger": self.tagger,
                 "samples": self._samples,
@@ -200,4 +210,5 @@ class IntentClassifier:
         inst._entity_samples = blob["entity_samples"]
         inst._fitted = blob["fitted"]
         inst._lock = RLock()
+        inst._loaded_from_version = blob.get("_jurebes_version")
         return inst

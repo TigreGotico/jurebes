@@ -112,7 +112,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
             self.registered_intents.remove(intent_name)
             for lang, clf in self.containers.items():
                 clf.remove_intent(intent_name)
-                self._exact = {k: v for k, v in self._exact.items() if v != intent_name}
+            self._exact = {k: v for k, v in self._exact.items() if v != intent_name}
 
     def handle_detach_intent(self, message: Message):
         self.__detach_intent(message.data.get("intent_name"))
@@ -139,7 +139,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
             LOG.error(f"Could not find file {file_name}")
             return None
         if not samples and isfile(file_name):
-            with open(file_name) as f:
+            with open(file_name, encoding="utf-8") as f:
                 samples = [line.strip() for line in f.readlines() if line.strip()]
         return samples
 

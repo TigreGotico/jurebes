@@ -60,7 +60,7 @@ def lsa(n_components: int = 200, base=None):
 def nmf(n_components: int = 50, base=None):
     """NMF on a TF-IDF base — non-negative latent factors."""
     base_step = base if base is not None else tfidf_word()
-    return Pipeline([("base", base_step), ("nmf", NMF(n_components=n_components, init="nndsvd", max_iter=400))])
+    return Pipeline([("base", base_step), ("nmf", NMF(n_components=n_components, init="nndsvd", max_iter=400, random_state=0))])
 
 
 def lda_topics(n_topics: int = 20, base=None):
@@ -68,7 +68,7 @@ def lda_topics(n_topics: int = 20, base=None):
     base_step = base if base is not None else count_word()
     return Pipeline([
         ("base", base_step),
-        ("lda", LatentDirichletAllocation(n_components=n_topics, learning_method="batch", max_iter=20)),
+        ("lda", LatentDirichletAllocation(n_components=n_topics, learning_method="batch", max_iter=20, random_state=0)),
     ])
 
 

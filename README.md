@@ -1,126 +1,88 @@
-# jurebes
+# jurebes 🐾
 
-J.U.R.E.B.E.S: Joint Universal Rule-based Engine and Bagging Ensemble-based System
+**J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
-This acronym reflects a combined approach of using rule-based techniques along with a bagging ensemble-based approach for intent parsing in the JUREBES engine, written in Python with the use of NLTK and scikit-learn libraries.
+A classical-ML intent classification research framework — pure scikit-learn, no NLTK, no padacioso.
 
+Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind a small intent-classification API, plus a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
 
-## Usage
+> *Named in memory of Jurebes, the author's dog.*
 
-```python
-from jurebes import JurebesIntentContainer
+## Install
 
-
-hello = ["hello human", "hello there", "hey", "hello", "hi"]
-name = ["my name is {name}", "call me {name}", "I am {name}",
-        "the name is {name}", "{name} is my name", "{name} is my name"]
-joke = ["tell me a joke", "say a joke", "tell joke"]
-
-
-engine = JurebesIntentContainer()
-
-engine.add_entity("name", ["jarbas", "bob", "João Casimiro Ferreira"])
-engine.add_intent("hello", hello)
-engine.add_intent("name", name)
-engine.add_intent("joke", joke)
-
-engine.train()
-
-test_set = {"name": ["I am groot", "my name is jarbas",
-                     "jarbas is the name", "they call me Ana Ferreira"],
-            "hello": ["hello beautiful", "hello bob", "hello world"],
-            "joke": ["say joke", "make me laugh", "do you know any joke"]}
-
-for intent, sents in test_set.items():
-    for sent in sents:
-        # optionally pass a threshold to return None instead of low confidence matches
-        print(sent, engine.calc_intent(sent, threshold=0.5))
-
-# I am groot IntentMatch(intent_name='name', confidence=1.0, entities={'name': 'groot'})
-# my name is jarbas IntentMatch(intent_name='name', confidence=1.0, entities={'name': 'jarbas'})
-# jarbas is the name IntentMatch(intent_name='name', confidence=0.9201351734080562, entities={'name': 'jarbas'})
-# call me Ana Ferreira IntentMatch(intent_name='name', confidence=1.0, entities={'name': 'ferreira'})
-# hello beautiful IntentMatch(intent_name='hello', confidence=0.8716522106345048, entities={})
-# hello bob IntentMatch(intent_name='hello', confidence=0.5400801051648911, entities={'name': 'bob'})
-# hello world IntentMatch(intent_name='hello', confidence=0.8716522106345048, entities={})
-# say joke IntentMatch(intent_name='joke', confidence=0.9785338275012387, entities={})
-# make me laugh IntentMatch(intent_name='name', confidence=0.725778770677012, entities={})
-# do you know any joke IntentMatch(intent_name='joke', confidence=0.917960967116358, entities={})
+```bash
+pip install jurebes
+# optional extras
+pip install jurebes[hf]    # HuggingFace dataset loader
+pip install jurebes[test]  # pytest stack
 ```
 
-## Advanced Usage
-
-you can select the classifiers or enable fuzzy matching and influence predictions, jurebes is stateful
+## Quickstart
 
 ```python
-from jurebes import JurebesIntentContainer
+from jurebes import IntentClassifier, BASELINES
 
-# single clf
-clf = SVC(probability=True)  # any scikit-learn clf
-# multiple classifiers will use soft voting to select prediction
-# clf = [SVC(probability=True), LogisticRegression(), DecisionTreeClassifier()] / default if not in args
+clf = IntentClassifier(BASELINES.build("logreg"))
+clf.add_intent("hello", ["hello", "hi", "hey there"])
+clf.add_intent("joke",  ["tell me a joke", "say a joke", "make me laugh"])
+clf.fit()
 
-tagger = OVOSNgramTagger(default_tag="O") # classic nltk / default if not in args
-#tagger = SVC(probability=True)  # any scikit-learn clf
-#tagger = [SVC(probability=True), LogisticRegression(), DecisionTreeClassifier()]
-
-# pre defined pipelines from ovos-classifiers
-clf_pipeline = "tfidf"  # default if not in args
-tagger_pipeline = "words"  # default if not in args
-engine = JurebesIntentContainer(clf, tagger,
-                                clf_pipeline, tagger_pipeline)
-
-(...)  # register intents
-
-# fuzzy matching
-engine.enable_fuzzy()
-sent = "they call me Ana Ferreira"
-print(engine.calc_intent(sent))
-# IntentMatch(intent_name='name', confidence=0.8716633619210677, entities={'name': 'ana ferreira'})
-engine.disable_fuzzy()
-print(engine.calc_intent(sent))
-# IntentMatch(intent_name='name', confidence=0.8282293617609358, entities={'name': 'ferreira'})
-
-
-# temporarily disable a intent
-engine.detach_intent("name")
-print(engine.calc_intent(sent))
-# IntentMatch(intent_name='hello', confidence=0.06113697262028985, entities={'name': 'ferreira'})
-engine.reatach_intent("name")
-print(engine.calc_intent(sent))
-# IntentMatch(intent_name='name', confidence=0.8548664325189478, entities={'name': 'ferreira'})
-
-
-# force correct predictions
-engine.exclude_keywords("name", ["laugh"])
-print(engine.calc_intent("make me laugh"))
-# IntentMatch(intent_name='joke', confidence=0.5125373111690074, entities={})
-engine.exclude_keywords("hello", ["laugh"])
-print(engine.calc_intent("make me laugh"))
-# IntentMatch(intent_name='joke', confidence=1.0, entities={})
-
-
-# inject context
-engine.set_context("joke", "joke_type", "chuck_norris")  # if a value is passed it will populate entities
-print(engine.calc_intent("tell me a chuch norris joke"))
-# IntentMatch(intent_name='joke', confidence=0.9707841337857908, entities={'joke_type': 'chuck_norris'})
-
-
-# require context
-engine.require_context("joke", "joke_type")
-engine.unset_context("joke", "joke_type")
-print(engine.calc_intent("tell me a chuch norris joke"))
-# IntentMatch(intent_name='hello', confidence=0.060199275248566525, entities={})
-engine.unrequire_context("joke", "joke_type")
-print(engine.calc_intent("tell me a chuch norris joke"))
-# IntentMatch(intent_name='joke', confidence=0.9462089582801377, entities={})
-
-
-# exclude intent matches based on context
-engine.exclude_context("hello", "said_hello")
-print(engine.calc_intent("hello"))
-# IntentMatch(intent_name='hello', confidence=1, entities={})
-engine.set_context("hello", "said_hello")  # now wont predict hello intent
-print(engine.calc_intent("hello"))
-# IntentMatch(intent_name='joke', confidence=0.06986199472674888, entities={})
+result = clf.predict("hi there")
+print(result.intent, result.confidence, result.entities)
 ```
+
+Pass any sklearn `Pipeline` / estimator instead of a baseline name; Jurebes auto-wraps non-probabilistic estimators with `CalibratedClassifierCV` so `predict_proba` always works.
+
+## Baselines
+
+`BASELINES` is a registry of ~23 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM), shallow MLP, voting, stacking, and a word+char union. List them:
+
+```bash
+jurebes list-baselines
+```
+
+Register your own:
+
+```python
+from jurebes import BASELINES
+BASELINES.register("my_pipeline", lambda: build_my_sklearn_pipeline())
+```
+
+## Benchmark
+
+```bash
+jurebes benchmark --dataset data.csv \
+    --baselines logreg,nb_multinomial,linear_svc --cv 5 \
+    --out report.md
+```
+
+Or programmatically:
+
+```python
+from jurebes.benchmark import compare, to_markdown
+from jurebes.datasets import load_csv
+
+X, y = load_csv("data.csv")
+result = compare(["logreg", "linear_svc", "nb_multinomial"], X, y, k=5)
+print(to_markdown(result))
+```
+
+`RunResult` captures accuracy, macro/micro F1, per-class F1, training time, predict-latency p50/p95/p99, model size, and confusion matrix.
+
+## Slots
+
+Optional per-token IOB tagger:
+
+```python
+from jurebes import IntentClassifier, BASELINES
+from jurebes.slots import SklearnIOBTagger
+
+clf = IntentClassifier(BASELINES.build("logreg"), tagger=SklearnIOBTagger())
+clf.add_entity("name", ["bob", "alice"])
+clf.add_intent("name", ["my name is {name}", "call me {name}"])
+clf.add_intent("hello", ["hello", "hi"])
+clf.fit()
+clf.predict("my name is bob").entities  # -> {"name": "bob"}
+```
+
+See [`docs/`](docs/) for the research guide, slot tagger details, and the OVOS deployment notes.

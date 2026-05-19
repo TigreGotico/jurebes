@@ -58,8 +58,14 @@ def _cmd_predict(args):
     return 0
 
 
+_BANNER = "🐾 jurebes — Just-sklearn Utility for Reproducible Evaluation of Baselines, Estimators and Solvers"
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="jurebes")
+    parser = argparse.ArgumentParser(
+        prog="jurebes",
+        description=_BANNER,
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_list = sub.add_parser("list-baselines")

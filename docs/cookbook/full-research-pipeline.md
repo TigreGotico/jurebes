@@ -144,15 +144,15 @@ Skipping steps 3 and 5 is the most common research-report sin. Both are cheap wi
 - Swap `portfolio` for a single family: `BASELINES.resolve("@reduced_dim")`.
 - Add a Bayesian search step for continuous hyperparameters:
 
-  ```python
-  from skopt.space import Real, Categorical
-  bayes_space = {
-      "clf__C": Real(0.01, 100, prior="log-uniform"),
-      "feat__ngram_range": Categorical([(1, 1), (1, 2), (1, 3)]),
-  }
-  r = search("logreg", bayes_space, X_train, y_train,
-             backend="bayes", n_iter=30, cv=5)
-  ```
+```python
+from skopt.space import Real, Categorical
+bayes_space = {
+    "clf__C": Real(0.01, 100, prior="log-uniform"),
+    "feat__ngram_range": Categorical([(1, 1), (1, 2), (1, 3)]),
+}
+r = search("logreg", bayes_space, X_train, y_train,
+           backend="bayes", n_iter=30, cv=5)
+```
 
 ## Related cookbooks
 

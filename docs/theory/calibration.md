@@ -81,10 +81,12 @@ Fit a non-decreasing step function from the raw scores to empirical frequencies.
 ### When to override the default
 
 - **Tree models** for thresholding: `calibrate="always"`.
-  ```python
-  from sklearn.ensemble import RandomForestClassifier
-  IntentClassifier(RandomForestClassifier(), calibrate="always")
-  ```
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+IntentClassifier(RandomForestClassifier(), calibrate="always")
+```
+
 - **Tiny datasets** (<3 samples per class): `calibrate=False` to avoid `cv=3` failing. Pair with a natively probabilistic estimator (`LogisticRegression`, `MultinomialNB`).
 
 ## Verifying calibration

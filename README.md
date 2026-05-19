@@ -37,6 +37,15 @@ print(result.intent, result.confidence, result.entities)
 
 Pass any sklearn `Pipeline` / estimator instead of a baseline name; Jurebes auto-wraps non-probabilistic estimators with `CalibratedClassifierCV` so `predict_proba` always works.
 
+## Documentation
+
+Full documentation lives under [`docs/`](docs/):
+
+- [Getting started](docs/getting-started/01-what-is-jurebes.md) — install, first classifier, core concepts, troubleshooting.
+- [Guides](docs/guides/choosing-a-baseline.md) — choosing a baseline, slots, calibration, reproducibility, debugging.
+- [Theory](docs/theory/intent-classification.md) — classical-ML foundations: featurization, linear models, kernels, ensembles, statistical comparison.
+- [API reference](docs/reference/index.md) — every public module, function, dataclass, and CLI flag.
+
 ## Research
 
 Jurebes is built as a research framework:

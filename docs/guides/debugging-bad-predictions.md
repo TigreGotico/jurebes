@@ -49,17 +49,17 @@ Common gotchas:
 
 - **Duplicate samples** across intents. Search for them:
 
-  ```python
-  from collections import defaultdict
-  by_text = defaultdict(set)
-  for x, lbl in zip(X, y):
-      by_text[x].add(lbl)
-  conflicts = {x: lbls for x, lbls in by_text.items() if len(lbls) > 1}
-  for x, lbls in conflicts.items():
-      print(f"{sorted(lbls)} | {x}")
-  ```
+```python
+from collections import defaultdict
+by_text = defaultdict(set)
+for x, lbl in zip(X, y):
+    by_text[x].add(lbl)
+conflicts = {x: lbls for x, lbls in by_text.items() if len(lbls) > 1}
+for x, lbls in conflicts.items():
+    print(f"{sorted(lbls)} | {x}")
+```
 
-  Identical text under two different labels is unresolvable noise.
+Identical text under two different labels is unresolvable noise.
 
 - **Sample count imbalance** — see [handling-class-imbalance.md](handling-class-imbalance.md).
 

@@ -93,7 +93,7 @@ Restore an `IntentClassifier` from a joblib file. The loaded instance has `_load
 
 ### Joblib payload schema
 
-```python
+```
 {
     "_jurebes_version": "<version-string>",
     "estimator":        <fitted sklearn estimator>,

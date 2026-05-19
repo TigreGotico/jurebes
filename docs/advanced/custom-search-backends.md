@@ -56,10 +56,10 @@ def run(*, factory, param_space, X, y, backend,
 2. Add `"my_backend"` to the `_BACKENDS` tuple at the top of `jurebes/search/api.py`.
 3. Add a dispatch branch:
 
-   ```python
-   elif backend == "my_backend":
-       from jurebes.search.my_backend import run as _run
-   ```
+```
+elif backend == "my_backend":
+    from jurebes.search.my_backend import run as _run
+```
 
 4. If the backend depends on an optional library, lazy-import inside `run` and raise `ImportError("install jurebes[<extra>] to use the <name> backend")`.
 

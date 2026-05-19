@@ -70,13 +70,13 @@ For datasets that should be reachable via the CLI's `@<name>` selector:
 1. Write the loader under `jurebes/datasets/canonical/<name>.py` exposing `load_<name>()`.
 2. Add it to the `CANONICAL` dict in `jurebes/datasets/canonical/__init__.py`:
 
-   ```python
-   CANONICAL: Dict[str, Callable] = {
-       "snips": load_snips,
-       # …
-       "my_dataset": load_my_dataset,
-   }
-   ```
+```python
+CANONICAL: Dict[str, Callable] = {
+    "snips": load_snips,
+    # …
+    "my_dataset": load_my_dataset,
+}
+```
 
 3. The CLI's `--dataset @my_dataset` selector picks it up automatically.
 

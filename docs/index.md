@@ -3,6 +3,7 @@
 **J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
 - [research.md](research.md) — adding baselines, running benchmarks, interpreting reports.
+- [search.md](search.md) — hyperparameter search backends and predefined spaces.
 - [slots.md](slots.md) — the IOB slot tagger.
 - [opm.md](opm.md) — using jurebes as an OVOS pipeline plugin.
 

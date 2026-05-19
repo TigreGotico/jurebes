@@ -17,20 +17,31 @@
 
 ## Configuration
 
-```yaml
-intents:
-  pipeline:
-    - ovos-jurebes-pipeline-plugin
-ovos-jurebes-pipeline-plugin:
-  baseline: linear_svc      # any name from BASELINES
-  enable_slots: true         # turn on SklearnIOBTagger
-  conf_high: 0.8
-  conf_med: 0.6
-  conf_low: 0.4
+In `mycroft.conf` (JSON):
+
+```json
+{
+  "intents": {
+    "pipeline": [
+      "ovos-jurebes-pipeline-plugin"
+    ]
+  },
+  "jurebes": {
+    "baseline": "linear_svc",
+    "enable_slots": true,
+    "conf_high": 0.8,
+    "conf_med": 0.6,
+    "conf_low": 0.4
+  }
+}
 ```
+
+`baseline` accepts any name registered in `BASELINES`. `enable_slots` toggles the `SklearnIOBTagger`. The three `conf_*` thresholds map onto the `ConfidenceMatcherPipeline` high/med/low buckets.
 
 ## Caveats
 
-- Padatious-style template + slot exact-matching (previously handled by `padacioso`) is intentionally absent in v2. Slots come only from the trained `SklearnIOBTagger`; if you disable slots, you get no slot extraction at all.
+- Slot extraction comes only from the trained `SklearnIOBTagger`; disabling slots removes all slot extraction.
+- Exact matches are handled in-process via a `{(lang, norm_utt): intent}` cache. For typo tolerance, pick a char-ngram baseline such as `logreg_char`, `union_logreg`, or `linear_svc_char`.
 
-The padacioso runtime dependency is gone; exact matches are handled in-process. Fuzzy matching is no longer a configuration knob — use a baseline (e.g. `logreg_char`, `union_logreg`, `linear_svc_char`) for typo tolerance.
+---
+[← back to docs index](index.md)

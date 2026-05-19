@@ -138,10 +138,29 @@ print(to_markdown(result, sort_by="p95_ms", precision=3))
 | macro_f1 | unweighted mean F1 per class — penalises poor-minority performance |
 | micro_f1 | global F1 — equals accuracy in multi-class single-label setups |
 | train_s | mean training seconds per fold |
-| p50_ms / p95_ms | per-utterance inference latency percentiles |
+| p50_ms / p95_ms | per-fold per-utterance inference latency percentiles, averaged across folds |
+| predict_ms_p95_pooled | pooled p95 over every per-prediction latency across all folds |
+| predict_ms_p99_pooled | pooled p99 over every per-prediction latency across all folds |
 | size_kb | serialised model size via `joblib.dump` to an in-memory buffer |
+| extra_scores | dict of any extra scoring metrics requested via `scoring=` |
+| group | the `BASELINES` group tag this baseline belongs to (or `None` for ad-hoc estimators) |
 
 Use `to_json(comparison)` for downstream plotting / aggregation; every value is JSON-serialisable.
+
+### Performance notes
+
+The numbers below are illustrative orders of magnitude, not measured benchmarks — actual values depend on dataset size, vocabulary, hardware, and joblib compression settings.
+
+| baseline family | train (relative) | p95 latency (relative) | model size (relative) |
+| --- | --- | --- | --- |
+| linear (logreg / linear_svc) | fast | low | small |
+| naive bayes | fastest | low | small |
+| hashing + SGD | fastest | low | tiny |
+| reduced_dim (LSA/NMF) | medium | low | small |
+| tree ensembles | medium-slow | medium | medium-large |
+| RBF SVM | slow | medium-high | medium |
+| MLP shallow | slow | low | medium |
+| stacking / voting | slowest | highest | largest |
 
 ## Datasets
 
@@ -149,3 +168,6 @@ Use `to_json(comparison)` for downstream plotting / aggregation; every value is 
 - `load_jsonl(path, text="text", label="intent")`
 - `load_ovos_intents(directory)` — recurses for `.intent` / `.voc` / `.entity` files.
 - `load_hf(name, split)` — optional `jurebes[hf]` extra; lazy-imports `datasets`.
+
+---
+[← back to docs index](index.md)

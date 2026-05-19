@@ -6,8 +6,9 @@ from jurebes.benchmark.harness import (
     cross_validate,
     train_test,
 )
-from jurebes.benchmark.metrics import RunResult
+from jurebes.benchmark.metrics import RunResult, pooled_percentiles
 from jurebes.benchmark.report import to_json, to_markdown
+from jurebes.benchmark.scoring import SCORERS as SCORING
 
 __all__ = [
     "RunResult",
@@ -17,4 +18,6 @@ __all__ = [
     "compare",
     "to_markdown",
     "to_json",
+    "pooled_percentiles",
+    "SCORING",
 ]

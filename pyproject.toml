@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jurebes"
+dynamic = ["version"]
+description = "A intent parser from OpenVoiceOS"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = [
+    "ovos-utils",
+    "ovos-classifiers[sklearn]>=0.0.0a1",
+    "padacioso",
+    "quebra-frases",
+    "nltk",
+]
+
+[project.urls]
+Homepage = "https://github.com/OpenVoiceOS/jurebes"
+
+[tool.setuptools.dynamic]
+version = {attr = "jurebes.version.__version__"}

@@ -1,0 +1,16 @@
+name: Release Preview
+
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  release_preview:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/release-preview.yml@dev
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
+    with:
+      package_name: 'jurebes'
+      version_file: 'jurebes/version.py'

@@ -1,0 +1,13 @@
+name: PIP Audit
+
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  pip_audit:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/pip-audit.yml@dev
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}

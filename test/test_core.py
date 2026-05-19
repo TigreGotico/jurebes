@@ -48,6 +48,56 @@ def test_calibrate_wraps_linear_svc():
     assert hasattr(clf.estimator, "predict_proba") or clf.estimator.__class__.__name__ == "CalibratedClassifierCV"
 
 
+def test_save_load_full_state(tmp_path: Path):
+    from jurebes.slots import SklearnIOBTagger
+    tagger = SklearnIOBTagger()
+    clf = IntentClassifier(BASELINES.build("logreg"), tagger=tagger)
+    clf.add_entity("name", ["bob", "alice", "tom"])
+    clf.add_intent("greet_name", ["hi {name}", "hello {name}", "hey {name}"])
+    clf.add_intent("plain", ["foo", "bar", "baz"])
+    clf.fit()
+    p = tmp_path / "m.joblib"
+    clf.save(p)
+    clf2 = IntentClassifier.load(p)
+    assert clf2._samples == clf._samples
+    assert clf2._entity_samples == clf._entity_samples
+    assert clf2.tagger is not None
+    assert clf2._fitted is True
+
+
+def test_intent_classifier_with_tagger_end_to_end():
+    from jurebes.slots import SklearnIOBTagger
+    tagger = SklearnIOBTagger()
+    clf = IntentClassifier(BASELINES.build("logreg"), tagger=tagger)
+    clf.add_entity("name", ["bob", "alice", "tom", "jarbas"])
+    clf.add_intent("greet_name", [
+        "hi {name}", "hello {name}", "hey {name}",
+        "my name is {name}", "call me {name}",
+    ])
+    clf.add_intent("hello", ["hello there", "hi friend", "hey", "hello"])
+    clf.fit()
+    r = clf.predict("my name is bob")
+    assert r.intent in {"greet_name", "hello"}
+    # tagger should have populated entities for at least one prediction
+    r2 = clf.predict("call me alice")
+    assert isinstance(r2.entities, dict)
+
+
+def test_calibrate_false_without_proba_raises():
+    from sklearn.pipeline import Pipeline
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.svm import LinearSVC
+    raw = Pipeline([("v", TfidfVectorizer()), ("c", LinearSVC())])
+    with pytest.raises(ValueError):
+        IntentClassifier(raw, calibrate=False)
+
+
+def test_calibrate_always_wraps():
+    from jurebes.baselines import BASELINES
+    clf = IntentClassifier(BASELINES.build("logreg"), calibrate="always")
+    assert clf.estimator.__class__.__name__ == "CalibratedClassifierCV"
+
+
 def test_fit_requires_two_classes():
     clf = IntentClassifier(BASELINES.build("logreg"))
     clf.add_intent("hello", ["hi", "hello"])

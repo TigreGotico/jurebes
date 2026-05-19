@@ -23,6 +23,10 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
 hf = ["datasets"]
+search-bayes = ["scikit-optimize>=0.10"]
+search-genetic = ["sklearn-genetic-opt>=0.10"]
+search-all = ["scikit-optimize>=0.10", "sklearn-genetic-opt>=0.10"]
+bench-plot = ["matplotlib"]
 
 [project.scripts]
 jurebes = "jurebes.cli:main"

@@ -24,6 +24,7 @@ from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 from sklearn.svm import SVC, LinearSVC
 from sklearn.tree import DecisionTreeClassifier
 
@@ -85,7 +86,15 @@ BASELINES.register("ridge", lambda: _p(tfidf_word(), _cal(RidgeClassifier())))
 BASELINES.register("random_forest", lambda: _p(tfidf_word(), RandomForestClassifier()))
 BASELINES.register("extra_trees", lambda: _p(tfidf_word(), ExtraTreesClassifier()))
 BASELINES.register("gradient_boosting", lambda: _p(tfidf_word(), GradientBoostingClassifier()))
-BASELINES.register("hist_gbm", lambda: _p(tfidf_word(), HistGradientBoostingClassifier()))
+def _hist_gbm():
+    return Pipeline([
+        ("feat", tfidf_word()),
+        ("dense", FunctionTransformer(lambda X: X.toarray(), accept_sparse=True)),
+        ("clf", HistGradientBoostingClassifier(min_samples_leaf=1)),
+    ])
+
+
+BASELINES.register("hist_gbm", _hist_gbm)
 BASELINES.register("decision_tree", lambda: _p(tfidf_word(), DecisionTreeClassifier()))
 BASELINES.register("mlp_shallow", lambda: _p(tfidf_word(), MLPClassifier(hidden_layer_sizes=(64,), max_iter=500)))
 

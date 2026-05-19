@@ -116,6 +116,66 @@ def test_load_ovos_intents_optional_bracket(tmp_path: Path):
     assert "hello" in greet  # the variant without "please"
 
 
+def test_canonical_loader_registry():
+    from jurebes.datasets.canonical import CANONICAL
+    assert set(CANONICAL.keys()) == {"snips", "clinc", "banking77", "hwu64", "atis", "massive"}
+
+
+def _fake_load_hf_factory(seen):
+    def _fake(name, split="train", text_field="text", label_field="label"):
+        seen["name"] = name
+        seen["split"] = split
+        seen["text_field"] = text_field
+        seen["label_field"] = label_field
+        return ["a", "b"], ["x", "y"]
+    return _fake
+
+
+def test_canonical_snips_uses_correct_hf_id(monkeypatch):
+    from jurebes.datasets.canonical import snips as snips_mod
+    seen = {}
+    import jurebes.datasets.huggingface as hf_mod
+    monkeypatch.setattr(hf_mod, "load_hf", _fake_load_hf_factory(seen))
+    X, y = snips_mod.load_snips("train")
+    assert X == ["a", "b"]
+    assert seen["name"] == "benayas/snips"
+    assert seen["text_field"] == "text"
+    assert seen["label_field"] == "category"
+
+
+def test_canonical_banking77_uses_correct_hf_id(monkeypatch):
+    from jurebes.datasets.canonical import banking77 as mod
+    seen = {}
+    import jurebes.datasets.huggingface as hf_mod
+    monkeypatch.setattr(hf_mod, "load_hf", _fake_load_hf_factory(seen))
+    X, y = mod.load_banking77("test")
+    assert seen["name"] == "banking77"
+    assert seen["split"] == "test"
+    assert seen["text_field"] == "text"
+    assert seen["label_field"] == "label"
+
+
+def test_canonical_hwu64_uses_correct_hf_id(monkeypatch):
+    from jurebes.datasets.canonical import hwu64 as mod
+    seen = {}
+    import jurebes.datasets.huggingface as hf_mod
+    monkeypatch.setattr(hf_mod, "load_hf", _fake_load_hf_factory(seen))
+    X, y = mod.load_hwu64("train")
+    assert seen["name"] == "DeepPavlov/hwu64"
+    assert seen["text_field"] == "text"
+    assert seen["label_field"] == "category"
+
+
+def test_canonical_atis_uses_correct_hf_id(monkeypatch):
+    from jurebes.datasets.canonical import atis as mod
+    seen = {}
+    import jurebes.datasets.huggingface as hf_mod
+    monkeypatch.setattr(hf_mod, "load_hf", _fake_load_hf_factory(seen))
+    mod.load_atis("train")
+    assert seen["name"] == "tuetschek/atis"
+    assert seen["label_field"] == "intent"
+
+
 def test_load_ovos_intents_collects_placeholders(tmp_path: Path):
     (tmp_path / "call.intent").write_text("call me {name}\nmy name is {name}\n", encoding="utf-8")
     from jurebes.datasets import load_ovos_intents

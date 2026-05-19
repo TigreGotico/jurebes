@@ -14,6 +14,12 @@ from jurebes.datasets import load_csv, load_jsonl
 
 
 def _load_dataset(path: str):
+    if isinstance(path, str) and path.startswith("@"):
+        from jurebes.datasets.canonical import CANONICAL
+        name = path[1:]
+        if name not in CANONICAL:
+            raise ValueError(f"unknown canonical dataset: {name!r}; known: {sorted(CANONICAL)}")
+        return CANONICAL[name]()
     p = Path(path)
     if p.suffix == ".csv":
         return load_csv(p)

@@ -22,6 +22,13 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
+e2e = [
+    "ovoscope",
+    "ovos-core",
+    "ovos-skill-hello-world",
+    "pytest",
+    "pytest-timeout",
+]
 hf = ["datasets"]
 search-bayes = ["scikit-optimize>=0.10"]
 search-genetic = ["sklearn-genetic-opt>=0.10"]

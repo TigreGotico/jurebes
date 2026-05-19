@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from os.path import isfile
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -232,7 +231,6 @@ class _Match:
         self.utterance = utterance
 
 
-@lru_cache(maxsize=64)
 def _calc_jurebes(utt: str, clf: IntentClassifier, blacklist_intents: tuple, blacklist_skills: tuple):
     try:
         ranked = clf.predict_proba(utt)

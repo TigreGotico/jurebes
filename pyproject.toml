@@ -9,16 +9,31 @@ description = "A intent parser from OpenVoiceOS"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
+authors = [{ name = "JarbasAI", email = "jarbasai@mailfence.com" }]
 dependencies = [
     "ovos-utils",
+    "ovos-bus-client",
+    "ovos-config",
+    "ovos-plugin-manager",
     "ovos-classifiers[sklearn]>=0.0.0a1",
     "padacioso",
     "quebra-frases",
     "nltk",
+    "langcodes",
 ]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
 
 [project.urls]
 Homepage = "https://github.com/OpenVoiceOS/jurebes"
 
+[project.entry-points."opm.pipeline"]
+"ovos-jurebes-pipeline-plugin" = "jurebes.opm:JurebesPipeline"
+
 [tool.setuptools.dynamic]
 version = {attr = "jurebes.version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jurebes*"]

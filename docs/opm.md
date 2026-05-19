@@ -29,4 +29,8 @@ ovos-jurebes-pipeline-plugin:
   conf_low: 0.4
 ```
 
+## Caveats
+
+- Padatious-style template + slot exact-matching (previously handled by `padacioso`) is intentionally absent in v2. Slots come only from the trained `SklearnIOBTagger`; if you disable slots, you get no slot extraction at all.
+
 The padacioso runtime dependency is gone; exact matches are handled in-process. Fuzzy matching is no longer a configuration knob — use a baseline (e.g. `logreg_char`, `union_logreg`, `linear_svc_char`) for typo tolerance.

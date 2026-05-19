@@ -1,4 +1,4 @@
-"""jurebes — Just-sklearn Utility for Reproducible Evaluation of Baselines, Estimators and Solvers.
+"""🐾 jurebes — Just-sklearn Utility for Reproducible Evaluation of Baselines, Estimators and Solvers.
 
 A classical-ML intent classification research framework.
 

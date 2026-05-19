@@ -39,6 +39,11 @@ jurebes benchmark --dataset data.csv --baselines logreg,linear_svc --cv 5 --out 
 jurebes benchmark --dataset data.csv --baselines logreg --format json --out report.json
 ```
 
+## Reported metric caveats
+
+- `model_size_bytes` is the uncompressed joblib pickle size. Real on-disk size will be smaller when joblib's default zlib compression is enabled at save time.
+- Per-fold `p50_ms`, `p95_ms`, `p99_ms` are computed *within* each fold and then averaged across folds. This is a per-fold percentile, not a pooled percentile across all predictions. Pooled percentiles (statistically more meaningful for tail latency) are planned in a follow-up sprint.
+
 ## Interpreting the report
 
 | column | meaning |

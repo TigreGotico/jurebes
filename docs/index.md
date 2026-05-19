@@ -6,6 +6,7 @@
 - [search.md](search.md) — hyperparameter search backends and predefined spaces.
 - [slots.md](slots.md) — the IOB slot tagger.
 - [opm.md](opm.md) — using jurebes as an OVOS pipeline plugin.
+- [`examples/notebooks/`](../examples/notebooks/) — runnable cell-celled scripts for SNIPS and BANKING77 research flows.
 
 jurebes is a classical-ML research framework: pure scikit-learn, joblib for persistence, and a thin OVOS adapter on top.
 

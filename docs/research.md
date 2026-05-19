@@ -169,5 +169,46 @@ The numbers below are illustrative orders of magnitude, not measured benchmarks 
 - `load_ovos_intents(directory)` — recurses for `.intent` / `.voc` / `.entity` files.
 - `load_hf(name, split)` — optional `jurebes[hf]` extra; lazy-imports `datasets`.
 
+## Canonical datasets
+
+Six canonical intent-benchmark loaders live in `jurebes.datasets.canonical`
+and are also reachable from the CLI as `--dataset @<name>`:
+
+- `load_snips` — SNIPS NLU benchmark (HF `benayas/snips`, 7 intents).
+- `load_clinc` — CLINC150 OOS (HF `clinc_oos`, config `plus`, 151 intents incl. `oos`).
+- `load_banking77` — fine-grained banking intents (HF `banking77`, 77 intents).
+- `load_hwu64` — home-assistant intents (HF `DeepPavlov/hwu64`, 64 intents).
+- `load_atis` — Air Travel Information System (HF `tuetschek/atis`).
+- `load_massive` — multilingual SLU benchmark (HF `AmazonScience/massive`, 60 intents x 51 locales).
+
+Each loader returns `(X, y)` and raises `ImportError("install jurebes[hf] …")`
+if the `datasets` extra is missing. Caching is handled by HF.
+
+## Statistical comparison
+
+`jurebes.benchmark.stats` provides the tests recommended by Demšar (2006),
+"Statistical Comparisons of Classifiers over Multiple Data Sets" (JMLR 7):
+
+- `paired_t_test_cv(a, b)` — paired Student's t-test on per-fold CV scores.
+  Assumes scores are roughly normal; use when comparing two models on a
+  single dataset with k-fold CV.
+- `wilcoxon_signed_rank_cv(a, b)` — non-parametric drop-in for paired-t
+  when normality is suspect or k is small.
+- `mcnemar_test(preds_a, preds_b, y_true)` — paired test on per-sample
+  correctness (contingency table). Use on a held-out test set with two
+  models; mid-p continuity correction.
+- `friedman_nemenyi(fold_scores)` — Friedman omnibus across three or more
+  baselines, followed by post-hoc Nemenyi pairwise comparison. Use when
+  comparing many baselines across multiple datasets or folds.
+- `critical_difference(fold_scores)` — average ranks plus the
+  critical-difference threshold; renders as ASCII table by default, with
+  `to_matplotlib(ax)` available when `jurebes[bench-plot]` is installed.
+
+The `to_markdown(result, with_significance=True)` report adds either a
+Critical Difference subsection (>=3 baselines) or paired-t + Wilcoxon
+rows (exactly 2 baselines) for the chosen metric (default `f1_macro`).
+The CLI exposes the same via `jurebes benchmark --with-significance` and
+the `jurebes stats` subcommand for offline analysis of saved runs.
+
 ---
 [← back to docs index](index.md)

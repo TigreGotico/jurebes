@@ -169,3 +169,12 @@ See [`docs/`](docs/) for the research guide, slot tagger details, and the OVOS d
 - [`docs/slots.md`](docs/slots.md) — IOB slot tagger and token features.
 - [`docs/opm.md`](docs/opm.md) — OVOS pipeline plugin configuration.
 - [`MIGRATION.md`](MIGRATION.md) — porting from prior `JurebesIntentContainer` API.
+
+## Examples
+
+Runnable cell-celled scripts live in [`examples/notebooks/`](examples/notebooks/):
+
+- [`snips_quickstart.py`](examples/notebooks/snips_quickstart.py) — fetch SNIPS, train, evaluate.
+- [`banking77_full_research_flow.py`](examples/notebooks/banking77_full_research_flow.py) — compare baselines, run Friedman+Nemenyi, tune the winner, evaluate on holdout.
+
+Both require `pip install jurebes[hf,bench-plot]`.

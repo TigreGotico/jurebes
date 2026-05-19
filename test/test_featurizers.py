@@ -5,6 +5,8 @@ from __future__ import annotations
 import numpy as np
 
 from jurebes.featurizers import (
+    SklearnAutoencoder,
+    autoencoder,
     feature_union,
     hashing_char,
     lda_topics,
@@ -115,6 +117,53 @@ def test_nmf_seeded_is_deterministic():
     X1 = p1.fit_transform(_DOCS)
     X2 = p2.fit_transform(_DOCS)
     np.testing.assert_allclose(X1, X2)
+
+
+def _ae_toy_X(n=40, d=5, seed=0):
+    return np.random.RandomState(seed).rand(n, d)
+
+
+def test_autoencoder_shape():
+    X = _ae_toy_X()
+    ae = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=50, random_state=0)
+    ae.fit(X)
+    Z = ae.transform(X)
+    assert Z.shape == (X.shape[0], 3)
+
+
+def test_autoencoder_deterministic():
+    X = _ae_toy_X()
+    a1 = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=50, random_state=42).fit(X)
+    a2 = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=50, random_state=42).fit(X)
+    np.testing.assert_allclose(a1.transform(X), a2.transform(X))
+
+
+def test_autoencoder_inverse_transform_shape():
+    X = _ae_toy_X()
+    ae = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=50, random_state=0).fit(X)
+    Xr = ae.inverse_transform(ae.transform(X))
+    assert Xr.shape == X.shape
+
+
+def test_autoencoder_reconstruction_error_decreases_with_training():
+    X = _ae_toy_X(n=80, d=6, seed=1)
+    short = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=5, random_state=0).fit(X)
+    long = SklearnAutoencoder(hidden_layer_sizes=(8, 3, 8), max_iter=200, random_state=0).fit(X)
+    assert long.reconstruction_error(X).mean() < short.reconstruction_error(X).mean()
+
+
+def test_autoencoder_in_pipeline():
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    docs = _DOCS + ["yet another", "more text here"]
+    labels = (["a"] * 7) + (["b"] * 7)
+    pipe = Pipeline([
+        ("feat", autoencoder(hidden_layer_sizes=(16, 4, 16), base=tfidf_word(), max_iter=100, random_state=0)),
+        ("clf", LogisticRegression(max_iter=500)),
+    ])
+    pipe.fit(docs, labels)
+    preds = pipe.predict(docs)
+    assert len(preds) == len(docs)
 
 
 def test_feature_union_combines():

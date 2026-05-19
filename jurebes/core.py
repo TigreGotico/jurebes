@@ -150,7 +150,33 @@ class IntentClassifier:
         return results
 
     def predict_batch(self, utterances: List[str]) -> List[IntentResult]:
-        return [self.predict(u) for u in utterances]
+        if not self._fitted:
+            raise RuntimeError("classifier not fitted")
+        if not utterances:
+            return []
+        preds = self.estimator.predict(list(utterances))
+        # If estimator has predict_proba, get top-1 confidence per row in one shot.
+        try:
+            probs = self.estimator.predict_proba(list(utterances))
+            classes = list(self.estimator.classes_)
+            results: List[IntentResult] = []
+            for utt, row in zip(utterances, probs):
+                idx = int(max(range(len(row)), key=lambda i: row[i]))
+                ents = self._extract_entities(utt)
+                results.append(IntentResult(
+                    intent=classes[idx], confidence=float(row[idx]),
+                    entities=dict(ents), utterance=utt,
+                ))
+            return results
+        except (AttributeError, NotImplementedError):
+            results = []
+            for utt, pred in zip(utterances, preds):
+                ents = self._extract_entities(utt)
+                results.append(IntentResult(
+                    intent=str(pred), confidence=1.0,
+                    entities=dict(ents), utterance=utt,
+                ))
+            return results
 
     def save(self, path: Union[str, Path]) -> None:
         joblib.dump(

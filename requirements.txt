@@ -1,7 +1,0 @@
-scikit-learn>=1.4
-joblib
-ovos-utils
-ovos-bus-client
-ovos-config
-ovos-plugin-manager
-langcodes

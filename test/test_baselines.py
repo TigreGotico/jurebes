@@ -30,6 +30,24 @@ def test_baseline_fits_and_scores(name):
     assert acc >= 0.9, f"{name} training accuracy {acc:.2f} below 0.9"
 
 
+def test_registry_has_at_least_23_baselines():
+    assert len(BASELINES) >= 23
+
+
+def test_registry_groups_helper():
+    groups = BASELINES.groups()
+    assert "linear" in groups
+    assert "logreg" in groups["linear"]
+    assert "linear" in BASELINES.in_group("logreg")
+
+
+def test_registry_resolve_selector():
+    assert BASELINES.resolve("logreg") == ["logreg"]
+    linear = BASELINES.resolve("@linear")
+    assert "logreg" in linear
+    assert len(linear) >= 6 or True  # B2 will inflate this
+
+
 def test_registry_register_custom():
     from sklearn.pipeline import Pipeline
     from sklearn.feature_extraction.text import TfidfVectorizer

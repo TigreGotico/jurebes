@@ -19,7 +19,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from jurebes.baselines import BASELINES
 from jurebes.benchmark.metrics import RunResult
 
-ClassifierFactory = Union[str, Callable]
+ClassifierFactory = Union[str, Callable[[], "Pipeline"]]  # noqa: F821
 
 
 def _resolve(factory: ClassifierFactory):

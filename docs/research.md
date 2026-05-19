@@ -1,5 +1,18 @@
 # Research guide
 
+## Adding a featurizer
+
+Featurizers are zero-arg builders returning a fresh sklearn transformer or `Pipeline`. Add them to `jurebes/featurizers.py`:
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def tfidf_word_bigrams():
+    return TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True)
+```
+
+Featurizers compose freely with the existing ones; `feature_union(builder_a, builder_b, ...)` returns a `FeatureUnion` over their outputs.
+
 ## Adding a baseline
 
 ```python
@@ -18,6 +31,12 @@ BASELINES.register(
 ```
 
 Factories are called fresh per run so cross-validation gets clean estimators.
+
+The bundled registry uses a dict-literal at `jurebes/baselines.py::BASELINE_SPECS`; new entries can be added there directly and then tagged into a group via `_GROUPS` so the CLI's `@<group>` selector works.
+
+## Adding a search backend
+
+The search subsystem (`jurebes/search/`) dispatches on a `backend` string to a per-backend `run()` function. To add a backend, write `jurebes/search/<name>.py` exposing a `run(*, factory, param_space, X, y, backend, scoring, cv, n_iter, seed, n_jobs, verbose) -> dict` and add it to the `_BACKENDS` tuple plus the dispatch ladder in `search/api.py`. Optional dependencies must be lazy-imported with a clear `ImportError("install jurebes[<extra>] to use the <name> backend")`.
 
 For non-probabilistic estimators (`LinearSVC`, `RidgeClassifier`, `Perceptron`, `PassiveAggressiveClassifier`, `SGDClassifier(loss="hinge")`), wrap with `sklearn.calibration.CalibratedClassifierCV(cv=3)` so `predict_proba` works.
 
@@ -42,7 +61,74 @@ jurebes benchmark --dataset data.csv --baselines logreg --format json --out repo
 ## Reported metric caveats
 
 - `model_size_bytes` is the uncompressed joblib pickle size. Real on-disk size will be smaller when joblib's default zlib compression is enabled at save time.
-- Per-fold `p50_ms`, `p95_ms`, `p99_ms` are computed *within* each fold and then averaged across folds. This is a per-fold percentile, not a pooled percentile across all predictions. Pooled percentiles (statistically more meaningful for tail latency) are planned in a follow-up sprint.
+- Per-fold `p50_ms`, `p95_ms`, `p99_ms` are computed *within* each fold and then averaged across folds. This is a per-fold percentile, not a pooled percentile across all predictions. The pooled fields `p50_ms_pooled`, `p95_ms_pooled`, `p99_ms_pooled` and `mean_ms` are computed over the flat list of every per-prediction latency observed across all folds; prefer them for tail-latency reporting.
+
+## Cookbook
+
+### 1. Compare all linear models
+
+```python
+from jurebes.benchmark import compare, to_markdown
+from jurebes.datasets import load_csv
+from jurebes.baselines import BASELINES
+
+X, y = load_csv("data.csv")
+result = compare(BASELINES.resolve("@linear"), X, y, k=5,
+                 scoring=("accuracy", "f1_macro"))
+print(to_markdown(result, sort_by="macro_f1"))
+```
+
+### 2. Tune logreg with random search
+
+```python
+from jurebes.search import search, spaces
+from jurebes.datasets import load_csv
+
+X, y = load_csv("data.csv")
+r = search("logreg", spaces.for_baseline("logreg"), X, y,
+           backend="random", n_iter=40, cv=5)
+print("best params:", r.best_params)
+r.best_estimator.save("best_logreg.joblib")
+```
+
+### 3. Find the best reduced-dim representation
+
+```python
+from jurebes.benchmark import compare, to_markdown
+from jurebes.baselines import BASELINES
+from jurebes.datasets import load_csv
+
+X, y = load_csv("data.csv")
+result = compare(BASELINES.resolve("@reduced_dim"), X, y, k=5)
+print(to_markdown(result, sort_by="macro_f1"))
+```
+
+### 4. Find the best NB variant for short utterances
+
+```python
+from jurebes.benchmark import compare, to_markdown
+from jurebes.baselines import BASELINES
+from jurebes.datasets import load_csv
+
+X, y = load_csv("short_utts.csv")
+result = compare(BASELINES.resolve("@naive_bayes"), X, y, k=5,
+                 scoring=("accuracy", "f1_macro", "log_loss"))
+print(to_markdown(result, sort_by="log_loss"))
+```
+
+### 5. Benchmark CPU latency
+
+```python
+from jurebes.benchmark import compare, to_markdown
+from jurebes.datasets import load_csv
+
+X, y = load_csv("data.csv")
+result = compare(
+    ["logreg", "linear_svc", "nb_multinomial", "hashing_sgd_log"],
+    X, y, k=5,
+)
+print(to_markdown(result, sort_by="p95_ms", precision=3))
+```
 
 ## Interpreting the report
 

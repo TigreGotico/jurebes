@@ -13,8 +13,12 @@ Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind
 ```bash
 pip install jurebes
 # optional extras
-pip install jurebes[hf]    # HuggingFace dataset loader
-pip install jurebes[test]  # pytest stack
+pip install jurebes[hf]              # HuggingFace dataset loader
+pip install jurebes[search-bayes]    # Bayesian hyperparameter search (skopt)
+pip install jurebes[search-genetic]  # Genetic-algorithm search (sklearn-genetic-opt)
+pip install jurebes[search-all]      # both bayes and genetic
+pip install jurebes[bench-plot]      # matplotlib-based comparison plots
+pip install jurebes[test]            # pytest stack
 ```
 
 ## Quickstart
@@ -33,9 +37,18 @@ print(result.intent, result.confidence, result.entities)
 
 Pass any sklearn `Pipeline` / estimator instead of a baseline name; Jurebes auto-wraps non-probabilistic estimators with `CalibratedClassifierCV` so `predict_proba` always works.
 
+## Research
+
+Jurebes is built as a research framework:
+
+- 43 named baselines tagged into groups (`linear`, `kernel`, `tree`, `naive_bayes`, `neural`, `reduced_dim`, `online`, `strategy`, `feature_engineering`, `ensemble`).
+- Hyperparameter search subsystem (`jurebes.search`) supporting grid, random, successive-halving, Bayesian (optional), and genetic (optional) backends.
+- Benchmark harness with multi-metric scoring (`f1_macro`, `accuracy`, `log_loss`, `top_k_accuracy`, ...) and pooled tail-latency percentiles.
+- See [`docs/research.md`](docs/research.md) and [`docs/search.md`](docs/search.md).
+
 ## Baselines
 
-`BASELINES` is a registry of ~23 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM), shallow MLP, voting, stacking, and a word+char union. List them:
+`BASELINES` is a registry of 43 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM, bagging), shallow MLP, voting, stacking, reduced-dim (LSA/NMF/LDA), multi-class strategy wrappers (OvR/OvO), discriminant analysis, and text-statistics composites. List them:
 
 ```bash
 jurebes list-baselines

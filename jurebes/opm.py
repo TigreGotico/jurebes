@@ -69,6 +69,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
 
         self.registered_intents: List[str] = []
         self.registered_entities: List[Dict] = []
+        self._intent_to_skill: Dict[str, str] = {}
         self.max_words = 50
         LOG.debug("Loaded Jurebes intent parser.")
 
@@ -86,7 +87,9 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         lang = standardize_lang_tag(lang or self.lang)
         match = self.calc_intent(utterances, lang, message)
         if match is not None and match.confidence > limit:
-            skill_id = match.intent.split(":")[0]
+            skill_id = self._intent_to_skill.get(
+                match.intent, match.intent.split(":")[0]
+            )
             return IntentHandlerMatch(
                 match_type=match.intent,
                 match_data=match.entities,
@@ -149,6 +152,9 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         if not samples:
             return
         self.registered_intents.append(name)
+        self._intent_to_skill[name] = message.data.get(
+            "skill_id", name.split(":")[0]
+        )
         self.containers[lang].add_intent(name, samples)
         for s in samples:
             if "{" not in s:

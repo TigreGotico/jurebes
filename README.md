@@ -41,14 +41,14 @@ Pass any sklearn `Pipeline` / estimator instead of a baseline name; Jurebes auto
 
 Jurebes is built as a research framework:
 
-- 43 named baselines tagged into groups (`linear`, `kernel`, `tree`, `naive_bayes`, `neural`, `reduced_dim`, `online`, `strategy`, `feature_engineering`, `ensemble`, `discriminant`).
+- 48 named baselines tagged into groups (`linear`, `kernel`, `tree`, `naive_bayes`, `neural`, `reduced_dim`, `online`, `strategy`, `feature_engineering`, `ensemble`, `discriminant`, `categorical`). Includes neural-bottleneck autoencoder pipelines (`autoencoder_*`) and dict-input categorical pipelines (`categorical_*`).
 - Hyperparameter search subsystem (`jurebes.search`) supporting grid, random, successive-halving, Bayesian (optional), and genetic (optional) backends.
 - Benchmark harness with multi-metric scoring (`f1_macro`, `accuracy`, `log_loss`, `top_k_accuracy`, ...) and pooled tail-latency percentiles.
 - See [`docs/research.md`](docs/research.md) and [`docs/search.md`](docs/search.md).
 
 ## Baselines
 
-`BASELINES` is a registry of 43 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM, bagging), shallow MLP, voting, stacking, reduced-dim (LSA/NMF/LDA), multi-class strategy wrappers (OvR/OvO), discriminant analysis, and text-statistics composites. List them:
+`BASELINES` is a registry of 48 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM, bagging), shallow MLP, voting, stacking, reduced-dim (LSA/NMF/LDA/autoencoder), multi-class strategy wrappers (OvR/OvO), discriminant analysis, text-statistics composites, and dict-input categorical pipelines. List them:
 
 ```bash
 jurebes list-baselines
@@ -106,10 +106,17 @@ jurebes list-baselines
 | ensemble | `stacking` |
 | ensemble | `union_logreg` |
 | ensemble | `voting_soft` |
+| reduced_dim | `autoencoder_linear_svc` |
+| reduced_dim | `autoencoder_logreg` |
+| reduced_dim | `autoencoder_rbf_svc` |
 | discriminant | `lda_classifier` |
 | discriminant | `qda_classifier` |
+| categorical | `categorical_logreg` |
+| categorical | `categorical_random_forest` |
 
-Rows total 50 because some baselines (e.g. `bagging_logreg`, `sgd_log`, `hashing_sgd_hinge`) belong to multiple groups. The registry itself contains 43 unique factories.
+Rows total more than 48 because some baselines (e.g. `bagging_logreg`, `sgd_log`, `hashing_sgd_hinge`) belong to multiple groups. The registry itself contains 48 unique factories.
+
+The `categorical_*` pipelines accept `list[dict[str, str]]` rather than raw text; they are exposed via the programmatic API only and are skipped by text-fixture benchmarks.
 
 Register your own:
 

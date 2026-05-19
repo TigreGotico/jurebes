@@ -35,6 +35,8 @@ from sklearn.svm import SVC, LinearSVC, NuSVC
 from sklearn.tree import DecisionTreeClassifier
 
 from jurebes.featurizers import (
+    autoencoder,
+    categorical,
     char_word_union,
     count_word,
     feature_union,
@@ -163,6 +165,19 @@ BASELINE_SPECS: Dict[str, Callable[[], Pipeline]] = {
     "union_text_stats_logreg": lambda: _p(
         feature_union(tfidf_word(), text_stats()), LogisticRegression(max_iter=1000),
     ),
+    # ── autoencoder (neural-bottleneck reduced-dim) ────────────────
+    "autoencoder_logreg": lambda: _p(
+        autoencoder(base=tfidf_word()), LogisticRegression(max_iter=1000),
+    ),
+    "autoencoder_linear_svc": lambda: _p(
+        autoencoder(base=tfidf_word()), _cal(LinearSVC()),
+    ),
+    "autoencoder_rbf_svc": lambda: _p(
+        autoencoder(base=tfidf_word()), SVC(kernel="rbf", probability=True),
+    ),
+    # ── categorical (dict-of-string input, not text) ───────────────
+    "categorical_logreg": lambda: _p(categorical(), LogisticRegression(max_iter=1000)),
+    "categorical_random_forest": lambda: _p(categorical(), RandomForestClassifier()),
 }
 
 
@@ -193,7 +208,11 @@ _GROUPS: Dict[str, Set[str]] = {
     "strategy": {"ovr_linear_svc", "ovo_linear_svc"},
     "feature_engineering": {"text_stats_logreg", "union_text_stats_logreg"},
     "discriminant": {"lda_classifier", "qda_classifier"},
+    "categorical": {"categorical_logreg", "categorical_random_forest"},
 }
+_GROUPS["reduced_dim"].update({
+    "autoencoder_logreg", "autoencoder_linear_svc", "autoencoder_rbf_svc",
+})
 _GROUPS["naive_bayes"].add("complement_nb_count")
 _GROUPS["linear"].update({"hashing_sgd_log", "hashing_sgd_hinge"})
 

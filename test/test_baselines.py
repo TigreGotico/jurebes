@@ -40,11 +40,20 @@ _y = _y * 3
 
 # Baselines whose feature space is intentionally weak for short utts
 # (text statistics carry little signal here) get a looser threshold.
-_WEAK = {"text_stats_logreg", "lda_logreg", "qda_classifier"}
+_WEAK = {
+    "text_stats_logreg", "lda_logreg", "qda_classifier",
+    "autoencoder_logreg", "autoencoder_linear_svc", "autoencoder_rbf_svc",
+}
+
+# Baselines whose input is dict-of-strings rather than text; the text-fit
+# parametrize cannot exercise them.
+_SKIP_TEXT_FIT = {"categorical_logreg", "categorical_random_forest"}
 
 
 @pytest.mark.parametrize("name", BASELINES.names())
 def test_baseline_fits_and_scores(name):
+    if name in _SKIP_TEXT_FIT:
+        pytest.skip(f"{name} consumes dict-of-string features, not raw text")
     est = BASELINES.build(name)
     est.fit(_X, _y)
     preds = est.predict(_X)
@@ -82,7 +91,13 @@ def test_registry_resolve_selector():
 
 
 def test_resolve_all_returns_full_registry():
+    assert len(BASELINES.resolve("@all")) == 48
     assert len(BASELINES.resolve("@all")) == len(list(BASELINES.names()))
+
+
+def test_resolve_group_categorical_contents():
+    got = set(BASELINES.resolve("@categorical"))
+    assert got == {"categorical_logreg", "categorical_random_forest"}
 
 
 def test_resolve_unknown_group_raises():

@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Callable, Dict, Set
 
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.discriminant_analysis import (
+    LinearDiscriminantAnalysis,
+    QuadraticDiscriminantAnalysis,
+)
 from sklearn.ensemble import (
+    BaggingClassifier,
     ExtraTreesClassifier,
     GradientBoostingClassifier,
     HistGradientBoostingClassifier,
@@ -20,17 +25,24 @@ from sklearn.linear_model import (
     RidgeClassifier,
     SGDClassifier,
 )
+from sklearn.multiclass import OneVsOneClassifier, OneVsRestClassifier
 from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
-from sklearn.svm import SVC, LinearSVC
+from sklearn.svm import SVC, LinearSVC, NuSVC
 from sklearn.tree import DecisionTreeClassifier
 
 from jurebes.featurizers import (
     char_word_union,
     count_word,
+    feature_union,
+    hashing_word,
+    lda_topics,
+    lsa,
+    nmf,
+    text_stats,
     tfidf_char,
     tfidf_word,
 )
@@ -111,6 +123,46 @@ BASELINE_SPECS: Dict[str, Callable[[], Pipeline]] = {
     "voting_soft": _voting_soft,
     "stacking": _stacking,
     "union_logreg": lambda: _p(char_word_union(), LogisticRegression(max_iter=1000)),
+    # ── reduced-dim ────────────────────────────────────────────────
+    "lsa_logreg": lambda: _p(lsa(50, tfidf_word()), LogisticRegression(max_iter=1000)),
+    "lsa_linear_svc": lambda: _p(lsa(50), _cal(LinearSVC())),
+    "lsa_rbf_svc": lambda: _p(lsa(50), SVC(kernel="rbf", probability=True)),
+    "nmf_logreg": lambda: _p(nmf(50), LogisticRegression(max_iter=1000)),
+    "lda_logreg": lambda: _p(lda_topics(20), LogisticRegression(max_iter=1000)),
+    # ── online / hashing ───────────────────────────────────────────
+    "hashing_sgd_log": lambda: _p(hashing_word(), SGDClassifier(loss="log_loss")),
+    "hashing_sgd_hinge": lambda: _p(hashing_word(), _cal(SGDClassifier(loss="hinge"))),
+    # ── extra naive bayes ──────────────────────────────────────────
+    "complement_nb_count": lambda: _p(count_word(), ComplementNB()),
+    # ── penalty / loss sweeps ──────────────────────────────────────
+    "logreg_l1": lambda: _p(tfidf_word(), LogisticRegression(penalty="l1", solver="saga", max_iter=2000)),
+    "logreg_elasticnet": lambda: _p(
+        tfidf_word(),
+        LogisticRegression(penalty="elasticnet", solver="saga", l1_ratio=0.5, max_iter=2000),
+    ),
+    "linear_svc_hinge": lambda: _p(tfidf_word(), _cal(LinearSVC(loss="hinge"))),
+    "sgd_modified_huber": lambda: _p(tfidf_word(), SGDClassifier(loss="modified_huber")),
+    # ── multiclass strategies ──────────────────────────────────────
+    "ovr_linear_svc": lambda: _p(tfidf_word(), _cal(OneVsRestClassifier(LinearSVC()))),
+    "ovo_linear_svc": lambda: _p(tfidf_word(), _cal(OneVsOneClassifier(LinearSVC()))),
+    # ── bagging / nu-svc ───────────────────────────────────────────
+    "bagging_logreg": lambda: _p(tfidf_word(), BaggingClassifier(LogisticRegression(max_iter=1000))),
+    "nusvc": lambda: _p(tfidf_word(), NuSVC(probability=True)),
+    # ── discriminant analysis (require dense input) ────────────────
+    "lda_classifier": lambda: Pipeline([
+        ("feat", tfidf_word()),
+        ("dense", FunctionTransformer(lambda X: X.toarray(), accept_sparse=True)),
+        ("clf", LinearDiscriminantAnalysis(solver="eigen", shrinkage="auto")),
+    ]),
+    "qda_classifier": lambda: Pipeline([
+        ("feat", lsa(20)),
+        ("clf", QuadraticDiscriminantAnalysis(reg_param=0.5)),
+    ]),
+    # ── feature-engineering ────────────────────────────────────────
+    "text_stats_logreg": lambda: _p(text_stats(), LogisticRegression(max_iter=1000)),
+    "union_text_stats_logreg": lambda: _p(
+        feature_union(tfidf_word(), text_stats()), LogisticRegression(max_iter=1000),
+    ),
 }
 
 
@@ -120,15 +172,29 @@ _GROUPS: Dict[str, Set[str]] = {
     "linear": {
         "logreg", "logreg_char", "linear_svc", "linear_svc_char",
         "sgd_log", "sgd_hinge", "passive_aggressive", "perceptron", "ridge",
+        "logreg_l1", "logreg_elasticnet", "linear_svc_hinge",
+        "sgd_modified_huber",
     },
-    "kernel": {"rbf_svc", "knn"},
+    "kernel": {"rbf_svc", "knn", "nusvc", "lsa_rbf_svc"},
     "tree": {
         "random_forest", "extra_trees", "gradient_boosting",
-        "hist_gbm", "decision_tree",
+        "hist_gbm", "decision_tree", "bagging_logreg",
     },
     "neural": {"mlp_shallow"},
-    "ensemble": {"voting_soft", "stacking", "union_logreg"},
+    "ensemble": {"voting_soft", "stacking", "union_logreg", "bagging_logreg"},
+    "reduced_dim": {
+        "lsa_logreg", "lsa_linear_svc", "lsa_rbf_svc",
+        "nmf_logreg", "lda_logreg",
+    },
+    "online": {
+        "hashing_sgd_log", "hashing_sgd_hinge",
+        "sgd_log", "sgd_hinge", "sgd_modified_huber",
+    },
+    "strategy": {"ovr_linear_svc", "ovo_linear_svc"},
+    "feature_engineering": {"text_stats_logreg", "union_text_stats_logreg"},
 }
+_GROUPS["naive_bayes"].add("complement_nb_count")
+_GROUPS["linear"].update({"hashing_sgd_log", "hashing_sgd_hinge"})
 
 
 class _Registry:

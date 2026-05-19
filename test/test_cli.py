@@ -91,6 +91,62 @@ def test_cli_benchmark_group_selector(tmp_path: Path, dataset: Path, capsys):
     assert "nb_multinomial" in out
 
 
+def test_cli_list_baselines_at_least_43(capsys):
+    rc = main(["list-baselines"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    # one baseline per line
+    lines = [ln for ln in out.splitlines() if ln.strip()]
+    assert len(lines) >= 43
+
+
+def test_cli_list_baselines_filtered_linear(capsys):
+    rc = main(["list-baselines", "--group", "linear"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "logreg" in out
+    assert "nb_multinomial" not in out
+
+
+def test_cli_benchmark_smoke_contains_baseline(tmp_path: Path, dataset: Path, capsys):
+    rc = main([
+        "benchmark", "--dataset", str(dataset),
+        "--baselines", "nb_multinomial,logreg", "--cv", "3",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "nb_multinomial" in out
+    assert "logreg" in out
+
+
+def test_cli_train_predict_round_trip(tmp_path: Path, dataset: Path, capsys):
+    model = tmp_path / "rt.joblib"
+    rc = main([
+        "train", "--dataset", str(dataset),
+        "--baseline", "nb_multinomial", "--out", str(model),
+    ])
+    assert rc == 0
+    capsys.readouterr()
+    rc = main(["predict", "--model", str(model), "--text", "tell me a joke"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "joke" in out
+
+
+def test_cli_search_smoke_random(tmp_path: Path, dataset: Path, capsys):
+    model = tmp_path / "best.joblib"
+    rc = main([
+        "search", "--dataset", str(dataset),
+        "--baseline", "nb_multinomial", "--backend", "random",
+        "--cv", "3", "--n-iter", "3",
+        "--space", "{'clf__alpha': [0.1, 0.5, 1.0]}",
+        "--out", str(model),
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "best_score" in out
+
+
 def test_cli_benchmark(tmp_path: Path, dataset: Path, capsys):
     rc = main([
         "benchmark", "--dataset", str(dataset),

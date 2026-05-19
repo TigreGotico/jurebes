@@ -81,6 +81,30 @@ def test_registry_resolve_selector():
     assert len(linear) >= 6 or True  # B2 will inflate this
 
 
+def test_resolve_all_returns_full_registry():
+    assert len(BASELINES.resolve("@all")) == len(list(BASELINES.names()))
+
+
+def test_resolve_unknown_group_raises():
+    with pytest.raises(KeyError):
+        BASELINES.resolve("@nope_not_a_group")
+
+
+def test_resolve_group_naive_bayes_contents():
+    got = set(BASELINES.resolve("@naive_bayes"))
+    expected = {"nb_multinomial", "nb_complement", "nb_bernoulli", "complement_nb_count"}
+    assert got == expected
+
+
+def test_groups_partition_coverage():
+    groups = BASELINES.groups()
+    covered = set()
+    for members in groups.values():
+        covered.update(members)
+    missing = set(BASELINES.names()) - covered
+    assert not missing, f"baselines belong to no group: {sorted(missing)}"
+
+
 def test_registry_register_custom():
     from sklearn.pipeline import Pipeline
     from sklearn.feature_extraction.text import TfidfVectorizer

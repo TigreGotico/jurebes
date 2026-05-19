@@ -192,6 +192,7 @@ _GROUPS: Dict[str, Set[str]] = {
     },
     "strategy": {"ovr_linear_svc", "ovo_linear_svc"},
     "feature_engineering": {"text_stats_logreg", "union_text_stats_logreg"},
+    "discriminant": {"lda_classifier", "qda_classifier"},
 }
 _GROUPS["naive_bayes"].add("complement_nb_count")
 _GROUPS["linear"].update({"hashing_sgd_log", "hashing_sgd_hinge"})

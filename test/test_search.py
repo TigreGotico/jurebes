@@ -91,3 +91,47 @@ def test_genetic_missing_dep_message(monkeypatch):
     sys.modules.pop("jurebes.search.genetic", None)
     with pytest.raises(ImportError, match=r"jurebes\[search-genetic\]"):
         search("nb_multinomial", {}, _X, _y, backend="genetic")
+
+
+def test_halving_grid_smoke():
+    small_space = {"feat__ngram_range": [(1, 1), (1, 2)], "clf__alpha": [0.1, 0.5, 1.0]}
+    r = search("nb_multinomial", small_space, _X, _y, backend="halving_grid", cv=3)
+    assert r.best_estimator is not None
+    assert r.best_estimator.predict("hello there").intent in {"hello", "joke", "name"}
+
+
+def test_random_with_distribution():
+    from scipy.stats import loguniform
+    space = {
+        "feat__ngram_range": [(1, 1), (1, 2)],
+        "clf__C": loguniform(1e-4, 10),
+    }
+    r = search("logreg", space, _X, _y, backend="random", cv=3, n_iter=3)
+    assert isinstance(r, SearchResult)
+    assert r.best_estimator is not None
+
+
+def test_search_best_estimator_is_intent_classifier(tmp_path):
+    from jurebes import IntentClassifier
+    space = {"clf__alpha": [0.1, 1.0]}
+    r = search("nb_multinomial", space, _X, _y, backend="grid", cv=3)
+    assert isinstance(r.best_estimator, IntentClassifier)
+    assert r.best_estimator.predict("hello").intent in {"hello", "joke", "name"}
+    p = tmp_path / "m.joblib"
+    r.best_estimator.save(p)
+    loaded = IntentClassifier.load(p)
+    assert loaded.predict("hello").intent in {"hello", "joke", "name"}
+
+
+def test_search_best_estimator_samples_populated():
+    space = {"clf__alpha": [0.1, 1.0]}
+    r = search("nb_multinomial", space, _X, _y, backend="grid", cv=3)
+    expected: dict = {}
+    for x, lbl in zip(_X, _y):
+        expected.setdefault(lbl, []).append(x)
+    assert r.best_estimator._samples == expected
+
+
+def test_spaces_for_baseline_unknown_raises():
+    with pytest.raises(KeyError):
+        spaces.for_baseline("does_not_exist")

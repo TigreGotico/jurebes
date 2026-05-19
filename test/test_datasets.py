@@ -78,6 +78,44 @@ def test_load_ovos_intents_alternation(tmp_path: Path):
     assert "hello friend" in X
 
 
+def test_load_csv_multiline_quoted_value(tmp_path: Path):
+    p = tmp_path / "ml.csv"
+    p.write_text('text,intent\n"line one\nline two",hello\nhi,hello\n', encoding="utf-8")
+    X, y = load_csv(p)
+    assert "line one\nline two" in X
+    assert y == ["hello", "hello"]
+
+
+def test_load_csv_bom_prefixed(tmp_path: Path):
+    p = tmp_path / "bom2.csv"
+    p.write_bytes(b"\xef\xbb\xbftext,intent\nhello,hello\nhi,hello\n")
+    X, y = load_csv(p)
+    assert X == ["hello", "hi"]
+    assert y == ["hello", "hello"]
+
+
+def test_load_ovos_intents_alternation_with_entity(tmp_path: Path):
+    (tmp_path / "intro.intent").write_text(
+        "(my|the) name is {name}\n", encoding="utf-8"
+    )
+    X, y, ents = load_ovos_intents(tmp_path)
+    # 2 alternation expansions
+    intro_samples = [x for x, lbl in zip(X, y) if lbl == "intro"]
+    assert len(intro_samples) == 2
+    assert "{name}" in intro_samples[0]
+    assert "name" in ents
+
+
+def test_load_ovos_intents_optional_bracket(tmp_path: Path):
+    (tmp_path / "greet.intent").write_text("[please] hello\n", encoding="utf-8")
+    X, y, _ = load_ovos_intents(tmp_path)
+    greet = [x for x, lbl in zip(X, y) if lbl == "greet"]
+    assert len(greet) == 2
+    joined = " | ".join(greet)
+    assert "please hello" in joined
+    assert "hello" in greet  # the variant without "please"
+
+
 def test_load_ovos_intents_collects_placeholders(tmp_path: Path):
     (tmp_path / "call.intent").write_text("call me {name}\nmy name is {name}\n", encoding="utf-8")
     from jurebes.datasets import load_ovos_intents

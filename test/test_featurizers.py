@@ -77,6 +77,46 @@ def test_text_stats_features_sane():
     assert X[0, 3] > 0
 
 
+def test_text_stats_feature_union_pipeline():
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    docs = _DOCS + ["yet another", "more text here"]
+    labels = (["a"] * 7) + (["b"] * 7)
+    union = feature_union(tfidf_word(), text_stats())
+    pipe = Pipeline([("feat", union), ("clf", LogisticRegression(max_iter=500))])
+    pipe.fit(docs, labels)
+    preds = pipe.predict(docs)
+    assert len(preds) == len(docs)
+
+
+def test_text_stats_empty_input():
+    t = text_stats()
+    t.fit([""])
+    # empty list
+    X0 = t.transform([])
+    assert X0.shape == (0, 7)
+    # empty string row
+    X1 = t.transform([""])
+    assert X1.shape == (1, 7)
+    assert (X1 == 0).all()
+
+
+def test_lda_topics_seeded_is_deterministic():
+    p1 = lda_topics(n_topics=3)
+    p2 = lda_topics(n_topics=3)
+    X1 = p1.fit_transform(_DOCS)
+    X2 = p2.fit_transform(_DOCS)
+    np.testing.assert_allclose(X1, X2)
+
+
+def test_nmf_seeded_is_deterministic():
+    p1 = nmf(n_components=3)
+    p2 = nmf(n_components=3)
+    X1 = p1.fit_transform(_DOCS)
+    X2 = p2.fit_transform(_DOCS)
+    np.testing.assert_allclose(X1, X2)
+
+
 def test_feature_union_combines():
     u = feature_union(tfidf_word(), text_stats())
     u.fit(_DOCS)

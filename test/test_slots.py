@@ -22,6 +22,27 @@ def test_iob_learns_entity():
     assert out.get("name") == "bob"
 
 
+def test_iob_tagger_save_load_round_trip(tmp_path):
+    t = SklearnIOBTagger()
+    t.add_entity("name", ["bob", "alice", "tom", "jarbas"])
+    t.fit({
+        "name": [
+            "my name is {name}",
+            "call me {name}",
+            "I am {name}",
+            "the name is {name}",
+        ],
+        "hello": ["hello there", "hi friend", "hey", "hello"],
+    })
+    assert t.fitted
+    p = tmp_path / "tagger.joblib"
+    t.save(p)
+    loaded = SklearnIOBTagger.load(p)
+    assert loaded.fitted
+    out = loaded.predict("my name is bob")
+    assert out.get("name") == "bob"
+
+
 def test_iob_no_entity_in_plain_text():
     t = SklearnIOBTagger()
     t.add_entity("name", ["bob", "alice"])

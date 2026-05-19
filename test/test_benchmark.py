@@ -72,6 +72,51 @@ def test_to_markdown_sort_by_accuracy():
     assert any("logreg" in ln for ln in lines)
 
 
+def test_to_markdown_sort_by_unknown_raises_keyerror():
+    import pytest
+    cmp = compare(["logreg", "nb_multinomial"], _X, _y, k=2)
+    with pytest.raises(KeyError, match="sort_by"):
+        to_markdown(cmp, sort_by="not_a_real_column")
+
+
+def test_to_markdown_sorted_order_correct():
+    cmp = compare(["logreg", "nb_multinomial"], _X, _y, k=2)
+    md = to_markdown(cmp, sort_by="accuracy")
+    lines = [ln for ln in md.splitlines() if "|" in ln][2:]  # skip header + sep
+    # Map row order to accuracy from cmp.rows by name lookup
+    by_name = {r.name: r.accuracy for r in cmp.rows}
+    order = []
+    for ln in lines:
+        for name in by_name:
+            if f"| {name} |" in ln:
+                order.append(name)
+                break
+    accs = [by_name[n] for n in order]
+    assert accs == sorted(accs, reverse=True)
+
+
+def test_top_k_accuracy_column_present():
+    cmp = compare(
+        ["logreg", "nb_multinomial"], _X, _y, k=2,
+        scoring=("accuracy", "top_k_accuracy"),
+    )
+    md = to_markdown(cmp)
+    assert "top_k_accuracy" in md
+    for r in cmp.rows:
+        assert "top_k_accuracy" in r.extra_scores
+
+
+def test_balanced_accuracy_column_present():
+    cmp = compare(
+        ["logreg", "nb_multinomial"], _X, _y, k=2,
+        scoring=("accuracy", "balanced_accuracy"),
+    )
+    md = to_markdown(cmp)
+    assert "balanced_accuracy" in md
+    for r in cmp.rows:
+        assert "balanced_accuracy" in r.extra_scores
+
+
 def test_plot_optional_dep(monkeypatch):
     import sys, pytest
     monkeypatch.setitem(sys.modules, "matplotlib", None)

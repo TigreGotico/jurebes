@@ -9,8 +9,10 @@ from jurebes import IntentClassifier
 from jurebes.baselines import BASELINES
 
 samples = {
-    "greet": ["hello", "hi", "hey there", "good morning"],
-    "bye": ["goodbye", "bye", "see you", "later"],
+    "greet": ["hello", "hi there", "hey friend", "good morning",
+              "howdy", "salutations", "morning everyone", "good day"],
+    "bye": ["goodbye", "see you later", "farewell", "catch you soon",
+            "take care", "until next time", "so long", "ciao"],
 }
 
 for name in ("voting_soft", "stacking"):

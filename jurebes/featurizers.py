@@ -1,9 +1,16 @@
-"""Named featurizer constructors — thin wrappers over sklearn text vectorizers."""
+"""Named featurizer constructors — thin wrappers over sklearn text vectorizers.
+
+`CategoricalVectorizer` is ported from the upstream
+`guided-categorical-embeddings` project (TigreGotico, Apache-2.0 licence).
+"""
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Optional
+import warnings
+from collections import Counter
+from typing import Dict, List, Optional
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -294,3 +301,101 @@ def autoencoder(hidden_layer_sizes=(64, 16, 64), base=None, **kwargs):
         ("dense", FunctionTransformer(_toarray, accept_sparse=True)),
         ("ae", ae),
     ])
+
+
+# ── categorical vectorizer ────────────────────────────────────────────────
+# Ported from guided-categorical-embeddings (TigreGotico, Apache-2.0).
+
+class CategoricalVectorizer(BaseEstimator, TransformerMixin):
+    """One-hot vectorizer over list-of-dict categorical features.
+
+    Each unique ``key=value`` pair becomes a column. Unknown pairs at
+    transform time produce a zero column for that feature without raising.
+    Vocabulary is saved/loaded as JSON (no pickle).
+    """
+
+    def __init__(self, min_frequency: int = 1) -> None:
+        self.vocabulary_: Optional[Dict[str, int]] = None
+        self.min_frequency = min_frequency
+
+    @property
+    def n_features(self) -> int:
+        if self.vocabulary_ is None:
+            raise ValueError("Vectorizer has not been fitted yet.")
+        return len(self.vocabulary_)
+
+    def fit(self, X: List[Dict[str, str]], y=None) -> "CategoricalVectorizer":
+        if not X:
+            raise ValueError("Cannot fit on empty data.")
+        counts: Counter = Counter()
+        for row in X:
+            for key, value in row.items():
+                counts[f"{key}={value}"] += 1
+        if self.min_frequency > 1:
+            feature_set = {f for f, c in counts.items() if c >= self.min_frequency}
+        else:
+            feature_set = set(counts.keys())
+        if not feature_set:
+            warnings.warn(
+                f"All features filtered out by min_frequency={self.min_frequency}. "
+                f"Vocabulary is empty.",
+                UserWarning,
+                stacklevel=2,
+            )
+        self.vocabulary_ = {feat: idx for idx, feat in enumerate(sorted(feature_set))}
+        return self
+
+    def transform(self, X: List[Dict[str, str]]) -> np.ndarray:
+        if self.vocabulary_ is None:
+            raise ValueError("Vectorizer has not been fitted yet.")
+        result = np.zeros((len(X), len(self.vocabulary_)), dtype=np.float32)
+        for i, row in enumerate(X):
+            for key, value in row.items():
+                feat = f"{key}={value}"
+                if feat in self.vocabulary_:
+                    result[i, self.vocabulary_[feat]] = 1.0
+        return result
+
+    def fit_transform(self, X: List[Dict[str, str]], y=None) -> np.ndarray:
+        self.fit(X)
+        return self.transform(X)
+
+    def inverse_transform(self, X: np.ndarray) -> List[Dict[str, str]]:
+        if self.vocabulary_ is None:
+            raise ValueError("Vectorizer has not been fitted yet.")
+        idx_to_feat = {idx: feat for feat, idx in self.vocabulary_.items()}
+        results: List[Dict[str, str]] = []
+        for row in X:
+            d: Dict[str, str] = {}
+            for idx in np.nonzero(row)[0]:
+                feat = idx_to_feat[int(idx)]
+                key, value = feat.split("=", 1)
+                d[key] = value
+            results.append(d)
+        return results
+
+    def save(self, path: str) -> None:
+        if self.vocabulary_ is None:
+            raise ValueError("Vectorizer has not been fitted yet.")
+        data = {"vocabulary": self.vocabulary_, "min_frequency": self.min_frequency}
+        with open(path, "w") as f:
+            json.dump(data, f, sort_keys=True)
+
+    def load(self, path: str) -> None:
+        with open(path, "r") as f:
+            data = json.load(f)
+        if "vocabulary" in data and "min_frequency" in data:
+            self.vocabulary_ = data["vocabulary"]
+            self.min_frequency = data["min_frequency"]
+        else:
+            warnings.warn(
+                "Loaded legacy vocabulary format; min_frequency not preserved.",
+                UserWarning,
+                stacklevel=2,
+            )
+            self.vocabulary_ = data
+
+
+def categorical(min_frequency: int = 1) -> CategoricalVectorizer:
+    """Return a fresh `CategoricalVectorizer` for dict-of-string inputs."""
+    return CategoricalVectorizer(min_frequency=min_frequency)

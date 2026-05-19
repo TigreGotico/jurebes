@@ -5,8 +5,10 @@ from __future__ import annotations
 import numpy as np
 
 from jurebes.featurizers import (
+    CategoricalVectorizer,
     SklearnAutoencoder,
     autoencoder,
+    categorical,
     feature_union,
     hashing_char,
     lda_topics,
@@ -164,6 +166,41 @@ def test_autoencoder_in_pipeline():
     pipe.fit(docs, labels)
     preds = pipe.predict(docs)
     assert len(preds) == len(docs)
+
+
+def test_categorical_round_trip():
+    X = [{"a": "1", "b": "x"}, {"a": "2", "b": "y"}, {"a": "1", "b": "y"}]
+    v = categorical()
+    v.fit(X)
+    Z = v.transform(X)
+    assert Z.shape[0] == 3
+    assert v.inverse_transform(Z) == X
+
+
+def test_categorical_save_load_json(tmp_path):
+    X = [{"k": "a"}, {"k": "b"}, {"k": "a"}]
+    v1 = categorical().fit(X)
+    p = tmp_path / "vocab.json"
+    v1.save(str(p))
+    v2 = CategoricalVectorizer()
+    v2.load(str(p))
+    assert v2.vocabulary_ == v1.vocabulary_
+    np.testing.assert_array_equal(v2.transform(X), v1.transform(X))
+
+
+def test_categorical_unknown_category_zero_vector():
+    v = categorical().fit([{"a": "1"}, {"a": "2"}])
+    Z = v.transform([{"a": "3"}])
+    # unseen value yields all-zero row across the column group
+    assert Z.shape == (1, 2)
+    assert (Z == 0).all()
+
+
+def test_categorical_min_frequency_filter():
+    X = [{"k": "a"}, {"k": "a"}, {"k": "b"}]  # 'b' appears once
+    v = CategoricalVectorizer(min_frequency=2).fit(X)
+    # only 'k=a' survives
+    assert set(v.vocabulary_.keys()) == {"k=a"}
 
 
 def test_feature_union_combines():

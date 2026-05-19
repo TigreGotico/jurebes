@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import joblib
 from sklearn.base import BaseEstimator
@@ -33,13 +33,47 @@ class IntentClassifier:
         estimator: Optional[BaseEstimator] = None,
         *,
         tagger: Optional[Any] = None,
-        calibrate: bool = True,
+        calibrate: Union[Literal["if_missing", "always"], bool] = "if_missing",
     ):
+        """Initialise the classifier.
+
+        Args:
+            estimator: any sklearn-compatible classifier (typically a Pipeline).
+            tagger: optional slot tagger with ``add_entity``/``fit``/``predict``.
+            calibrate: probability-calibration mode.
+
+                - ``"if_missing"`` (default, also ``True``): wrap with
+                  CalibratedClassifierCV only when the estimator lacks
+                  ``predict_proba``. Recommended for most pipelines.
+                - ``"always"``: always wrap, even when ``predict_proba``
+                  exists. Useful for tree/forest/kNN classifiers whose
+                  native probabilities are unreliable.
+                - ``False``: never wrap. If the estimator has no
+                  ``predict_proba`` this raises ``ValueError`` immediately.
+
+        Raises:
+            ValueError: if ``calibrate=False`` and the estimator has no
+                ``predict_proba``.
+        """
         if estimator is None:
             from jurebes.baselines import BASELINES
             estimator = BASELINES.build("linear_svc")
-        if calibrate and not _has_proba(estimator):
+        # Normalise: True → "if_missing", False stays False
+        mode: Union[str, bool] = "if_missing" if calibrate is True else calibrate
+        has_proba = _has_proba(estimator)
+        if mode == "always":
             estimator = CalibratedClassifierCV(estimator, cv=3)
+        elif mode == "if_missing":
+            if not has_proba:
+                estimator = CalibratedClassifierCV(estimator, cv=3)
+        elif mode is False:
+            if not has_proba:
+                raise ValueError(
+                    "estimator has no predict_proba and calibrate=False; "
+                    "pass calibrate='if_missing' or 'always' to enable wrapping"
+                )
+        else:
+            raise ValueError(f"unknown calibrate mode: {calibrate!r}")
         self.estimator = estimator
         self.tagger = tagger
         self._samples: Dict[str, List[str]] = {}

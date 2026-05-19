@@ -156,3 +156,58 @@ def test_cli_benchmark(tmp_path: Path, dataset: Path, capsys):
     out = capsys.readouterr().out
     assert "nb_multinomial" in out
     assert "accuracy" in out
+
+
+def test_cli_benchmark_at_dataset(monkeypatch, capsys, tmp_path: Path):
+    """`--dataset @snips` should dispatch to the canonical registry."""
+    X = ["hello", "hi", "hey", "hello there", "hi friend", "hey friend"] * 3
+    y = ["hello"] * len(X)
+    X += ["bye", "see ya", "later", "goodbye", "farewell", "ciao"] * 3
+    y += ["bye"] * (len(X) - len(y))
+
+    def _fake_snips(split="train"):
+        return X, y
+
+    monkeypatch.setitem(__import__("jurebes.datasets.canonical", fromlist=["CANONICAL"]).CANONICAL,
+                        "snips", _fake_snips)
+    rc = main([
+        "benchmark", "--dataset", "@snips",
+        "--baselines", "nb_multinomial", "--cv", "2",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "nb_multinomial" in out
+
+
+def test_cli_benchmark_with_significance(dataset: Path, capsys):
+    rc = main([
+        "benchmark", "--dataset", str(dataset),
+        "--baselines", "nb_multinomial,logreg,nb_bernoulli",
+        "--cv", "3", "--with-significance",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Critical Difference" in out
+
+
+def test_cli_stats_pair_smoke(tmp_path: Path, dataset: Path, capsys):
+    a = tmp_path / "a.json"
+    b = tmp_path / "b.json"
+    rc = main([
+        "benchmark", "--dataset", str(dataset),
+        "--baselines", "nb_multinomial", "--cv", "3",
+        "--save-run", str(a), "--out", str(tmp_path / "a.md"),
+    ])
+    assert rc == 0
+    rc = main([
+        "benchmark", "--dataset", str(dataset),
+        "--baselines", "logreg", "--cv", "3",
+        "--save-run", str(b), "--out", str(tmp_path / "b.md"),
+    ])
+    assert rc == 0
+    capsys.readouterr()
+    rc = main(["stats", "--pair", str(a), str(b), "--metric", "f1_macro"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "paired_t" in out
+    assert "wilcoxon" in out

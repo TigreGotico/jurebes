@@ -13,6 +13,9 @@ def to_markdown(
     *,
     sort_by: Optional[str] = None,
     precision: int = 4,
+    with_significance: bool = False,
+    significance_alpha: float = 0.05,
+    significance_metric: Optional[str] = None,
 ) -> str:
     """Render a markdown table.
 
@@ -59,6 +62,58 @@ def to_markdown(
             v = r.extra_scores.get(c, float("nan"))
             cells.append(fmt.format(v) if v == v else "nan")
         lines.append("| " + " | ".join(cells) + " |")
+    if with_significance:
+        sig = _significance_block(
+            comparison,
+            metric=significance_metric,
+            alpha=significance_alpha,
+            precision=precision,
+        )
+        if sig:
+            lines.append("")
+            lines.append(sig)
+    return "\n".join(lines)
+
+
+def _significance_block(comparison: ComparisonResult, *, metric, alpha: float, precision: int) -> str:
+    fsbb = comparison.fold_scores_by_baseline
+    if not fsbb:
+        return ""
+    chosen = metric or "f1_macro"
+    fold_scores = {name: scores[chosen] for name, scores in fsbb.items() if chosen in scores}
+    if len(fold_scores) < 2:
+        return ""
+    lines: list = []
+    fmt = f"{{:.{precision}f}}"
+    if len(fold_scores) >= 3:
+        from jurebes.benchmark.stats import critical_difference, friedman_nemenyi
+        fr = friedman_nemenyi(fold_scores, alpha=alpha)
+        cd = critical_difference(fold_scores, alpha=alpha)
+        lines.append(f"### Critical Difference (metric={chosen}, alpha={alpha})")
+        lines.append("")
+        lines.append(f"Friedman statistic={fmt.format(fr.statistic)}, p={fmt.format(fr.pvalue)}, reject_null={fr.reject_null}")
+        lines.append("")
+        lines.append("| baseline | mean_rank |")
+        lines.append("| --- | --- |")
+        for n, r in sorted(cd.mean_ranks.items(), key=lambda kv: kv[1]):
+            lines.append(f"| {n} | {fmt.format(r)} |")
+        lines.append("")
+        lines.append(f"CD threshold = {fmt.format(cd.cd_threshold)}")
+        lines.append("Statistically indistinguishable groups:")
+        for grp in cd.groups:
+            lines.append("- {" + ", ".join(sorted(grp)) + "}")
+    else:
+        from jurebes.benchmark.stats import paired_t_test_cv, wilcoxon_signed_rank_cv
+        names = list(fold_scores.keys())
+        a, b = fold_scores[names[0]], fold_scores[names[1]]
+        rt = paired_t_test_cv(a, b, alpha=alpha)
+        rw = wilcoxon_signed_rank_cv(a, b, alpha=alpha)
+        lines.append(f"### Pairwise significance ({names[0]} vs {names[1]}, metric={chosen}, alpha={alpha})")
+        lines.append("")
+        lines.append("| test | statistic | pvalue | reject_null |")
+        lines.append("| --- | --- | --- | --- |")
+        lines.append(f"| paired_t | {fmt.format(rt.statistic)} | {fmt.format(rt.pvalue)} | {rt.reject_null} |")
+        lines.append(f"| wilcoxon | {fmt.format(rw.statistic)} | {fmt.format(rw.pvalue)} | {rw.reject_null} |")
     return "\n".join(lines)
 
 

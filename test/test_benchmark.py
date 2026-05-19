@@ -126,3 +126,25 @@ def test_plot_optional_dep(monkeypatch):
     cmp = compare(["logreg"], _X, _y, k=2)
     with pytest.raises(ImportError, match=r"jurebes\[bench-plot\]"):
         plot_comparison(cmp)
+
+
+def test_compare_exposes_fold_scores():
+    cmp = compare(["logreg", "nb_multinomial"], _X, _y, k=3)
+    fsbb = cmp.fold_scores_by_baseline
+    assert set(fsbb.keys()) == {"logreg", "nb_multinomial"}
+    for name, scores in fsbb.items():
+        assert "f1_macro" in scores
+        assert len(scores["f1_macro"]) == 3
+
+
+def test_to_markdown_with_significance_three_baselines():
+    cmp = compare(["logreg", "nb_multinomial", "linear_svc"], _X, _y, k=3)
+    md = to_markdown(cmp, with_significance=True)
+    assert "Critical Difference" in md
+
+
+def test_to_markdown_with_significance_two_baselines():
+    cmp = compare(["logreg", "nb_multinomial"], _X, _y, k=3)
+    md = to_markdown(cmp, with_significance=True)
+    assert "paired_t" in md
+    assert "wilcoxon" in md

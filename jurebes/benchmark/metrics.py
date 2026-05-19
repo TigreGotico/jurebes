@@ -31,6 +31,8 @@ class RunResult:
     labels: List[str] = field(default_factory=list)
     extra_scores: Dict[str, float] = field(default_factory=dict)
     group: str = ""
+    # Per-fold scores for each scoring metric (empty for train_test runs).
+    fold_scores: Dict[str, List[float]] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)

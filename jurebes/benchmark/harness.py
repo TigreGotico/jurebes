@@ -172,6 +172,9 @@ def cross_validate(
 
     pooled = pooled_percentiles(pooled_samples)
     extra_mean = {n: float(np.mean(vs)) if vs and not all(np.isnan(vs)) else float("nan") for n, vs in extra.items()}
+    fold_scores: dict = {n: [float(v) for v in vs] for n, vs in extra.items()}
+    fold_scores["f1_macro"] = [float(v) for v in macros]
+    fold_scores["f1_micro"] = [float(v) for v in micros]
     return RunResult(
         name=name,
         accuracy=float(extra_mean.get("accuracy", 0.0)),
@@ -191,6 +194,7 @@ def cross_validate(
         labels=labels,
         extra_scores=extra_mean,
         group=_baseline_group(name),
+        fold_scores=fold_scores,
     )
 
 
@@ -200,7 +204,16 @@ class ComparisonResult:
     scoring: Tuple[str, ...] = ("accuracy", "f1_macro")
 
     def to_dict(self) -> dict:
-        return {"rows": [r.to_dict() for r in self.rows], "scoring": list(self.scoring)}
+        return {
+            "rows": [r.to_dict() for r in self.rows],
+            "scoring": list(self.scoring),
+            "fold_scores_by_baseline": self.fold_scores_by_baseline,
+        }
+
+    @property
+    def fold_scores_by_baseline(self) -> dict:
+        """Map baseline name → {scoring_metric → per-fold scores}."""
+        return {r.name: dict(r.fold_scores) for r in self.rows}
 
 
 def compare(

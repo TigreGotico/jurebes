@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
@@ -10,6 +11,30 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import joblib
 from sklearn.base import BaseEstimator
 from sklearn.calibration import CalibratedClassifierCV
+
+from jurebes.datasets.expansion import expand_template
+
+_WS_RE = re.compile(r"\s+")
+
+
+def _expand_samples(samples: List[str]) -> List[str]:
+    """Expand OVOS ``(a|b)``/``[opt]`` syntax in ``samples``.
+
+    ``{slot}`` placeholders are preserved so slot taggers still learn
+    them. Whitespace from removed optionals is collapsed and duplicates
+    are dropped while preserving insertion order. Samples without
+    template metacharacters are passed through untouched.
+    """
+    out: List[str] = []
+    seen: set = set()
+    for s in samples:
+        variants = expand_template(s) if ("(" in s or "[" in s) else [s]
+        for v in variants:
+            v = _WS_RE.sub(" ", v).strip()
+            if v and v not in seen:
+                seen.add(v)
+                out.append(v)
+    return out
 
 
 @dataclass
@@ -86,12 +111,13 @@ class IntentClassifier:
 
     def add_intent(self, name: str, samples: List[str]) -> None:
         with self._lock:
-            self._samples.setdefault(name, []).extend(samples)
+            self._samples.setdefault(name, []).extend(_expand_samples(samples))
 
     def add_entity(self, name: str, samples: List[str]) -> None:
         if self.tagger is None:
             raise ValueError("no tagger configured; pass tagger=SklearnIOBTagger(...)")
         with self._lock:
+            samples = _expand_samples(samples)
             self._entity_samples.setdefault(name, []).extend(samples)
             self.tagger.add_entity(name, samples)
 

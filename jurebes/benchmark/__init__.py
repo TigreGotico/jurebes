@@ -1,5 +1,10 @@
 """Benchmark harness for comparing classical-ML intent classifiers."""
 
+from jurebes.benchmark.calibration import (
+    brier_score,
+    expected_calibration_error,
+    reliability_curve,
+)
 from jurebes.benchmark.harness import (
     ComparisonResult,
     compare,
@@ -20,4 +25,7 @@ __all__ = [
     "to_json",
     "pooled_percentiles",
     "SCORING",
+    "expected_calibration_error",
+    "brier_score",
+    "reliability_curve",
 ]

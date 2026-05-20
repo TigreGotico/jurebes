@@ -1,6 +1,6 @@
 # `jurebes.benchmark`
 
-Module: `jurebes.benchmark`. Re-exports `compare`, `cross_validate`, `train_test`, `RunResult`, `ComparisonResult`, `to_markdown`, `to_json`, `pooled_percentiles`, and `SCORING`.
+Module: `jurebes.benchmark`. Re-exports `compare`, `cross_validate`, `train_test`, `RunResult`, `ComparisonResult`, `to_markdown`, `to_json`, `pooled_percentiles`, `SCORING`, `expected_calibration_error`, `brier_score`, `reliability_curve`. See [calibration theory](../theory/calibration.md) for `ece` and `brier` semantics.
 
 ## Public functions
 

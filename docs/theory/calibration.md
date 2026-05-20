@@ -103,5 +103,46 @@ Lower log-loss correlates with better calibration on the same dataset; cross-bas
 
 For real diagnosis use reliability diagrams + ECE on a held-out set.
 
+## Measuring calibration in jurebes
+
+`jurebes.benchmark.calibration` exposes three numbers and one diagnostic plot:
+
+```python
+from jurebes.benchmark import compare
+
+# add ece and brier alongside any other scoring metrics
+result = compare(["logreg", "linear_svc", "nb_multinomial"],
+                 X, y, k=5, scoring=("f1_macro", "ece", "brier"))
+```
+
+Or call them directly on (y_true, y_pred_proba, classes):
+
+```python
+from jurebes.benchmark import (
+    expected_calibration_error,
+    brier_score,
+    reliability_curve,
+)
+
+proba = clf.predict_proba_matrix(X_test)  # n × len(classes)
+ece = expected_calibration_error(y_test, proba, classes, n_bins=15)
+brier = brier_score(y_test, proba, classes)
+centers, acc, conf, counts = reliability_curve(y_test, proba, classes, n_bins=15)
+```
+
+A perfect classifier has `ece=0` and `brier=0`. ECE close to zero means predicted confidence matches empirical accuracy *on average*; Brier penalises both miscalibration and incorrect prediction.
+
+Render the reliability diagram (requires `jurebes[bench-plot]`):
+
+```python
+from jurebes.benchmark.calibration import plot_reliability
+plot_reliability(y_test, proba, classes, n_bins=15)
+plt.savefig("reliability.png")
+```
+
+## Why this matters for `IntentClassifier(calibrate="if_missing")`
+
+Jurebes auto-wraps non-probabilistic estimators (LinearSVC, hinge SGD, etc.) in `CalibratedClassifierCV`. The wrap is necessary for `predict_proba` to exist at all — but the *quality* of those calibrations varies by estimator family and dataset size. Tree-family classifiers (RandomForest, ExtraTrees) expose native `predict_proba` that is often poorly calibrated (frequency of leaf labels, frequently spiking at 0/1). Use ECE / Brier on a held-out set to verify the calibration is good enough for downstream consumers (confidence-threshold gates, active-learning loops, OPM intent matchers).
+
 ---
 - Back to [docs index](../index.md)

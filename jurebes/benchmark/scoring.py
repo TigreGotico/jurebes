@@ -13,6 +13,11 @@ from sklearn.metrics import (
     top_k_accuracy_score,
 )
 
+from jurebes.benchmark.calibration import (
+    brier_score as _brier,
+    expected_calibration_error as _ece,
+)
+
 
 def _f1_macro(y_true, y_pred, _probs=None, classes=None):
     return float(f1_score(y_true, y_pred, average="macro", zero_division=0))
@@ -42,6 +47,14 @@ def _top_k_accuracy(y_true, y_pred, probs=None, classes=None):
     return float(top_k_accuracy_score(y_true, probs, k=3, labels=list(classes)))
 
 
+def _ece_score(y_true, y_pred, probs=None, classes=None):
+    return _ece(y_true, probs, classes)
+
+
+def _brier_score(y_true, y_pred, probs=None, classes=None):
+    return _brier(y_true, probs, classes)
+
+
 SCORERS: Dict[str, Callable] = {
     "f1_macro": _f1_macro,
     "f1_micro": _f1_micro,
@@ -49,6 +62,8 @@ SCORERS: Dict[str, Callable] = {
     "balanced_accuracy": _balanced_accuracy,
     "log_loss": _log_loss,
     "top_k_accuracy": _top_k_accuracy,
+    "ece": _ece_score,
+    "brier": _brier_score,
 }
 
 

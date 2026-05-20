@@ -14,6 +14,7 @@ from jurebes.semi_supervised import (
     pseudo_label,
     select_high_confidence,
     self_train,
+    co_train,
 )
 
 
@@ -129,6 +130,50 @@ def test_self_train_threshold_schedule_called_per_round():
     )
     assert len(calls) >= 1
     assert calls[0] == 0
+
+
+def _word_view():
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    return IntentClassifier(
+        Pipeline([("v", TfidfVectorizer()), ("c", LogisticRegression(max_iter=500))]),
+    )
+
+
+def _char_view():
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    return IntentClassifier(
+        Pipeline([
+            ("v", TfidfVectorizer(analyzer="char_wb", ngram_range=(3, 5))),
+            ("c", LogisticRegression(max_iter=500)),
+        ]),
+    )
+
+
+def test_co_train_returns_two_view_history():
+    X = ["hello", "hi", "hey", "good morning", "goodbye", "bye", "see you", "later"]
+    y = ["greet"] * 4 + ["bye"] * 4
+    unlabeled = ["hello there", "see you tomorrow", "good day", "bye for now",
+                 "morning", "later friend"]
+    res = co_train(
+        _word_view, _char_view, X, y, unlabeled,
+        confidence_threshold=0.4, k_per_round=2, max_rounds=3,
+    )
+    assert len(res.added_per_round_view_a) >= 1
+    assert len(res.added_per_round_view_b) == len(res.added_per_round_view_a)
+
+
+def test_co_train_adds_pseudo_labels_from_each_view():
+    X = ["hello", "hi", "hey", "good morning", "goodbye", "bye", "see you", "later"]
+    y = ["greet"] * 4 + ["bye"] * 4
+    unlabeled = ["hello there", "see you tomorrow", "good day", "bye for now",
+                 "morning", "later friend", "hi friend", "bye bye"]
+    res = co_train(
+        _word_view, _char_view, X, y, unlabeled,
+        confidence_threshold=0.4, k_per_round=2, max_rounds=4,
+    )
+    assert sum(res.added_per_round_view_a) > 0
+    assert sum(res.added_per_round_view_b) > 0
+    assert len(res.labeled_X) > len(X)
 
 
 def test_pseudo_label_primitives_exposed():

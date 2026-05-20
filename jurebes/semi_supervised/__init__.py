@@ -17,6 +17,7 @@ from jurebes.semi_supervised.pseudo_label import (
     select_high_confidence,
 )
 from jurebes.semi_supervised.self_training import SelfTrainResult, self_train
+from jurebes.semi_supervised.co_training import CoTrainResult, co_train
 
 __all__ = [
     "SELECTION_STRATEGIES",
@@ -24,4 +25,6 @@ __all__ = [
     "select_high_confidence",
     "SelfTrainResult",
     "self_train",
+    "CoTrainResult",
+    "co_train",
 ]

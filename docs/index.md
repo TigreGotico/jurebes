@@ -24,6 +24,7 @@ A classical-ML intent classification research framework.
 - [Reproducibility](guides/reproducibility.md)
 - [Out-of-domain detection](guides/out-of-domain-detection.md)
 - [Debugging bad predictions](guides/debugging-bad-predictions.md)
+- [LLM-driven data augmentation](guides/active-learning-llm-augmentation.md)
 
 ## Theory
 

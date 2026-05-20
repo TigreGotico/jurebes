@@ -25,6 +25,7 @@ A classical-ML intent classification research framework.
 - [Out-of-domain detection](guides/out-of-domain-detection.md)
 - [Debugging bad predictions](guides/debugging-bad-predictions.md)
 - [LLM-driven data augmentation](guides/active-learning-llm-augmentation.md)
+- [Semi-supervised learning](guides/semi-supervised-learning.md)
 
 ## Theory
 
@@ -62,6 +63,7 @@ A classical-ML intent classification research framework.
 - [Statistical tests](reference/stats.md)
 - [CLI](reference/cli.md)
 - [Active-learning primitives](reference/active-learning.md)
+- [Semi-supervised primitives](reference/semi-supervised.md)
 - [Search subsystem](search.md)
 - [Slot taggers](slots.md) — dictionary, template, sklearn IOB, hybrid, CRF (`TAGGERS` registry)
 - [Slot tagger reference](reference/slots.md)

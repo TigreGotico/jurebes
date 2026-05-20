@@ -196,11 +196,19 @@ def test_label_propagation_round_trips_on_labeled_only():
     assert len(res.predicted_labels) == 1
 
 
-def test_pseudo_label_primitives_exposed():
+def test_public_api_surface():
     public = set(semi_supervised.__all__)
-    assert {
+    assert public == {
         "SELECTION_STRATEGIES",
         "pseudo_label",
         "select_high_confidence",
-    }.issubset(public)
-    assert set(SELECTION_STRATEGIES) >= {"global_top_k", "per_class_quota"}
+        "SelfTrainResult",
+        "self_train",
+        "CoTrainResult",
+        "co_train",
+        "LabelPropResult",
+        "label_propagation",
+    }
+    assert set(SELECTION_STRATEGIES) == {"global_top_k", "per_class_quota"}
+    for name in public:
+        assert hasattr(semi_supervised, name)

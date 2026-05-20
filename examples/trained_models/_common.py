@@ -13,6 +13,10 @@ PORTFOLIO = [
     "linear_svc_char",
     "lsa_logreg",
     "autoencoder_logreg",
+    "autoencoder_logreg_wide",
+    "denoising_autoencoder_logreg",
+    "label_guided_logreg",
+    "label_guided_linear_svc",
 ]
 
 HERE = Path(__file__).resolve().parent

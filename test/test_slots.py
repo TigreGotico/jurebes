@@ -1,4 +1,9 @@
-from jurebes.slots import SklearnIOBTagger, tokenize
+from jurebes.slots import (
+    DictionaryTagger,
+    SklearnIOBTagger,
+    TemplateTagger,
+    tokenize,
+)
 
 
 def test_tokenize():
@@ -52,3 +57,70 @@ def test_iob_no_entity_in_plain_text():
     })
     out = t.predict("hello there")
     assert "name" not in out
+
+
+# ── DictionaryTagger ────────────────────────────────────────────────
+
+
+def test_dictionary_tagger_basic():
+    t = DictionaryTagger()
+    t.add_entity("city", ["paris", "lisbon"])
+    assert t.predict("weather in paris") == {"city": "paris"}
+
+
+def test_dictionary_tagger_case_insensitive():
+    t = DictionaryTagger()
+    t.add_entity("city", ["paris", "lisbon"])
+    out = t.predict("weather in Lisbon")
+    assert out.get("city", "").lower() == "lisbon"
+
+
+def test_dictionary_tagger_multitoken():
+    t = DictionaryTagger()
+    t.add_entity("city", ["new york", "paris"])
+    out = t.predict("weather in new york")
+    assert out.get("city", "").lower() == "new york"
+
+
+def test_dictionary_tagger_save_load(tmp_path):
+    t = DictionaryTagger()
+    t.add_entity("city", ["paris", "lisbon"])
+    p = tmp_path / "dict.json"
+    t.save(p)
+    loaded = DictionaryTagger.load(p)
+    assert loaded.predict("weather in paris") == {"city": "paris"}
+
+
+# ── TemplateTagger ──────────────────────────────────────────────────
+
+
+def test_template_tagger_basic():
+    t = TemplateTagger()
+    t.add_intent("weather", ["weather in {city}"])
+    t.fit()
+    assert t.predict("weather in lisbon") == {"city": "lisbon"}
+
+
+def test_template_tagger_alternation():
+    t = TemplateTagger()
+    t.add_intent("weather", ["(weather|temperature) in {city}"])
+    t.fit()
+    assert t.predict("weather in lisbon") == {"city": "lisbon"}
+    assert t.predict("temperature in paris") == {"city": "paris"}
+
+
+def test_template_tagger_no_match():
+    t = TemplateTagger()
+    t.add_intent("weather", ["weather in {city}"])
+    t.fit()
+    assert t.predict("hello world") == {}
+
+
+def test_template_tagger_save_load(tmp_path):
+    t = TemplateTagger()
+    t.add_intent("weather", ["weather in {city}"])
+    t.fit()
+    p = tmp_path / "tpl.json"
+    t.save(p)
+    loaded = TemplateTagger.load(p)
+    assert loaded.predict("weather in lisbon") == {"city": "lisbon"}

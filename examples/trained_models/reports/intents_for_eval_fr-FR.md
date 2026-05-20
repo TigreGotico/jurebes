@@ -11,13 +11,13 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 
 | baseline | accuracy | macro_f1 |
 |---|---|---|
-| linear_svc_char | 0.8376 | 0.8413 |
-| voting_soft | 0.8176 | 0.8196 |
-| linear_svc | 0.8141 | 0.8174 |
-| ovr_linear_svc | 0.8141 | 0.8174 |
+| linear_svc_char | 0.8382 | 0.8418 |
+| voting_soft | 0.8182 | 0.8200 |
+| linear_svc | 0.8147 | 0.8180 |
+| ovr_linear_svc | 0.8147 | 0.8180 |
 | logreg_char | 0.8024 | 0.8019 |
 | logreg | 0.7847 | 0.7850 |
-| nb_multinomial | 0.6665 | 0.6402 |
+| nb_multinomial | 0.6653 | 0.6391 |
 
 **winning baseline (intent):** `linear_svc_char`
 
@@ -43,7 +43,7 @@ Using the winning baseline `linear_svc_char`.
 | communication | 180 | 0.8889 |
 | media | 168 | 0.8036 |
 | navigation | 170 | 0.8294 |
-| news | 172 | 0.7733 |
+| news | 172 | 0.7791 |
 | search_qa | 168 | 0.9107 |
 | smarthome | 166 | 0.8795 |
 | system_control | 170 | 0.7706 |

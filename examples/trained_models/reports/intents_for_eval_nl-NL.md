@@ -11,13 +11,13 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 
 | baseline | accuracy | macro_f1 |
 |---|---|---|
-| linear_svc_char | 0.8394 | 0.8427 |
-| logreg_char | 0.8147 | 0.8181 |
-| voting_soft | 0.8100 | 0.8144 |
-| linear_svc | 0.8094 | 0.8139 |
-| ovr_linear_svc | 0.8094 | 0.8139 |
-| logreg | 0.7918 | 0.7971 |
-| nb_multinomial | 0.6641 | 0.6406 |
+| linear_svc_char | 0.8359 | 0.8393 |
+| logreg_char | 0.8147 | 0.8182 |
+| voting_soft | 0.8112 | 0.8157 |
+| linear_svc | 0.8106 | 0.8149 |
+| ovr_linear_svc | 0.8106 | 0.8149 |
+| logreg | 0.7924 | 0.7981 |
+| nb_multinomial | 0.6565 | 0.6282 |
 
 **winning baseline (intent):** `linear_svc_char`
 
@@ -41,11 +41,11 @@ Using the winning baseline `linear_svc_char`.
 |---|---|---|
 | calendar | 166 | 0.8313 |
 | communication | 170 | 0.8588 |
-| media | 178 | 0.8258 |
+| media | 178 | 0.8202 |
 | navigation | 170 | 0.8588 |
-| news | 168 | 0.7738 |
+| news | 168 | 0.7679 |
 | search_qa | 168 | 0.8750 |
 | smarthome | 174 | 0.8276 |
-| system_control | 168 | 0.8274 |
+| system_control | 168 | 0.8036 |
 | timers_alarms | 166 | 0.8614 |
 | weather | 172 | 0.8547 |

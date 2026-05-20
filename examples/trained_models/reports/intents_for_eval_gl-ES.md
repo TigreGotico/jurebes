@@ -12,9 +12,9 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 | baseline | accuracy | macro_f1 |
 |---|---|---|
 | linear_svc_char | 0.8441 | 0.8471 |
-| voting_soft | 0.8182 | 0.8216 |
-| linear_svc | 0.8171 | 0.8219 |
-| ovr_linear_svc | 0.8171 | 0.8219 |
+| voting_soft | 0.8188 | 0.8222 |
+| linear_svc | 0.8165 | 0.8214 |
+| ovr_linear_svc | 0.8165 | 0.8214 |
 | logreg_char | 0.8141 | 0.8144 |
 | logreg | 0.7906 | 0.7957 |
 | nb_multinomial | 0.6724 | 0.6575 |

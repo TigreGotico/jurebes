@@ -11,13 +11,13 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 
 | baseline | accuracy | macro_f1 |
 |---|---|---|
-| linear_svc_char | 0.8576 | 0.8612 |
-| logreg_char | 0.8300 | 0.8329 |
-| linear_svc | 0.8135 | 0.8192 |
-| ovr_linear_svc | 0.8135 | 0.8192 |
+| linear_svc_char | 0.8565 | 0.8600 |
+| logreg_char | 0.8288 | 0.8317 |
 | voting_soft | 0.8124 | 0.8174 |
-| logreg | 0.7794 | 0.7846 |
-| nb_multinomial | 0.6571 | 0.6355 |
+| linear_svc | 0.8118 | 0.8177 |
+| ovr_linear_svc | 0.8118 | 0.8177 |
+| logreg | 0.7800 | 0.7851 |
+| nb_multinomial | 0.6618 | 0.6409 |
 
 **winning baseline (intent):** `linear_svc_char`
 
@@ -39,7 +39,7 @@ Train each tagger on the same templates + entity gazetteer; evaluate against the
 Using the winning baseline `linear_svc_char`.
 | domain | n | accuracy |
 |---|---|---|
-| calendar | 174 | 0.8276 |
+| calendar | 174 | 0.8161 |
 | communication | 164 | 0.9146 |
 | media | 168 | 0.8512 |
 | navigation | 172 | 0.8663 |

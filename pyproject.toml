@@ -34,6 +34,7 @@ search-bayes = ["scikit-optimize>=0.10"]
 search-genetic = ["sklearn-genetic-opt>=0.10"]
 search-all = ["scikit-optimize>=0.10", "sklearn-genetic-opt>=0.10"]
 bench-plot = ["matplotlib"]
+slots-crf = ["sklearn-crfsuite>=0.5"]
 
 [project.scripts]
 jurebes = "jurebes.cli:main"

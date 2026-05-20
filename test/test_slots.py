@@ -221,3 +221,26 @@ def test_intent_classifier_accepts_tagger_string():
     clf = IntentClassifier(tagger="dictionary")
     assert isinstance(clf.tagger, DictionaryTagger)
 
+
+# ── CRFTagger (optional) ────────────────────────────────────────────
+
+
+def test_crf_tagger_smoke():
+    import pytest
+    pytest.importorskip("sklearn_crfsuite")
+    from jurebes.slots.crf import CRFTagger
+    t = CRFTagger()
+    t.add_entity("name", ["bob", "alice", "tom", "jarbas"])
+    t.fit({
+        "name": [
+            "my name is {name}",
+            "call me {name}",
+            "I am {name}",
+            "the name is {name}",
+        ],
+        "hello": ["hello there", "hi friend", "hey", "hello"],
+    })
+    assert t.fitted
+    out = t.predict("my name is bob")
+    assert out.get("name") == "bob"
+

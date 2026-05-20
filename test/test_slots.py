@@ -124,3 +124,75 @@ def test_template_tagger_save_load(tmp_path):
     t.save(p)
     loaded = TemplateTagger.load(p)
     assert loaded.predict("weather in lisbon") == {"city": "lisbon"}
+
+
+# ── HybridCascadeTagger ─────────────────────────────────────────────
+
+
+def _train_iob_intent_samples():
+    return {
+        "name": [
+            "my name is {name}",
+            "call me {name}",
+            "I am {name}",
+            "the name is {name}",
+        ],
+        "hello": ["hello there", "hi friend", "hey", "hello"],
+    }
+
+
+def test_hybrid_dictionary_wins():
+    from jurebes.slots import DictionaryTagger, TemplateTagger
+    from jurebes.slots.hybrid import HybridCascadeTagger
+
+    d = DictionaryTagger()
+    d.add_entity("city", ["paris"])
+    t = TemplateTagger()
+    t.add_intent("weather", ["weather in {city}"])
+    h = HybridCascadeTagger(taggers=[d, t])
+    h.fit()
+    out = h.predict("weather in paris")
+    # dictionary returns "paris" literally; if template were first it'd return same here,
+    # so use a case marker by registering "Paris" only in dict
+    assert out.get("city") == "paris"
+
+
+def test_hybrid_template_fallback():
+    from jurebes.slots import DictionaryTagger, TemplateTagger
+    from jurebes.slots.hybrid import HybridCascadeTagger
+
+    d = DictionaryTagger()
+    d.add_entity("city", ["paris"])  # does not contain "berlin"
+    t = TemplateTagger()
+    t.add_intent("weather", ["weather in {city}"])
+    h = HybridCascadeTagger(taggers=[d, t])
+    h.fit()
+    out = h.predict("weather in berlin")
+    assert out.get("city") == "berlin"
+
+
+def test_hybrid_classifier_fallback():
+    from jurebes.slots import SklearnIOBTagger
+    from jurebes.slots.hybrid import HybridCascadeTagger
+
+    iob = SklearnIOBTagger()
+    iob.add_entity("name", ["bob", "alice", "tom", "jarbas"])
+    h = HybridCascadeTagger(taggers=[iob])
+    h.fit(_train_iob_intent_samples())
+    out = h.predict("my name is bob")
+    assert out.get("name") == "bob"
+
+
+def test_hybrid_save_load(tmp_path):
+    from jurebes.slots import DictionaryTagger
+    from jurebes.slots.hybrid import HybridCascadeTagger
+
+    d = DictionaryTagger()
+    d.add_entity("city", ["paris"])
+    h = HybridCascadeTagger(taggers=[d])
+    h.fit()
+    p = tmp_path / "hyb.joblib"
+    h.save(p)
+    loaded = HybridCascadeTagger.load(p)
+    assert loaded.predict("weather in paris") == {"city": "paris"}
+

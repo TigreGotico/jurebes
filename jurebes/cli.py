@@ -130,6 +130,39 @@ def _cmd_stats(args):
     return 2
 
 
+def _cmd_confusions(args):
+    """List the most-confused intent pairs from a saved ComparisonResult."""
+    import json
+    with open(args.run, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    rows = data.get("rows", [])
+    if not rows:
+        print("no rows in result file", file=sys.stderr)
+        return 1
+    row = next((r for r in rows if r.get("name") == args.baseline), rows[0]) if args.baseline else rows[0]
+    cm = row.get("confusion_matrix") or []
+    labels = list((row.get("per_class_f1") or {}).keys()) or [str(i) for i in range(len(cm))]
+    pairs = []
+    for i, row_counts in enumerate(cm):
+        for j, count in enumerate(row_counts):
+            if i == j or count <= 0:
+                continue
+            pairs.append((labels[i], labels[j], int(count)))
+    pairs.sort(key=lambda t: t[2], reverse=True)
+    pairs = pairs[: args.top_n]
+
+    if not pairs:
+        print("no confusions to report (diagonal-only confusion matrix)")
+        return 0
+    print(f"top {len(pairs)} confusions for {row.get('name')!r}:")
+    print(f"{'true_label':>30}  {'predicted_as':>30}  {'count':>6}")
+    print("-" * 72)
+    for a, b, n in pairs:
+        print(f"{a:>30}  {b:>30}  {n:>6}")
+    return 0
+
+
 def _cmd_train(args):
     X, y = _load_dataset(args.dataset)
     tagger = None
@@ -228,6 +261,13 @@ def main(argv=None) -> int:
     p_search.add_argument("--space", help="python-literal dict overriding spaces.for_baseline()")
     p_search.add_argument("--out")
     p_search.set_defaults(func=_cmd_search)
+
+    p_conf = sub.add_parser("confusions", help="most-confused intent pairs from a benchmark run")
+    p_conf.add_argument("--run", required=True, help="path to a saved ComparisonResult JSON file")
+    p_conf.add_argument("--top-n", type=int, default=10, dest="top_n")
+    p_conf.add_argument("--baseline", default=None,
+                        help="baseline name (if absent uses the first row in the run)")
+    p_conf.set_defaults(func=_cmd_confusions)
 
     p_stats = sub.add_parser("stats", help="statistical comparison across saved benchmark runs")
     p_stats.add_argument("--runs", nargs="+", help="paths to ComparisonResult JSON files")

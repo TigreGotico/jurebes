@@ -94,6 +94,12 @@ def test_friedman_too_few_baselines():
         friedman_nemenyi({"only_one": [0.8, 0.9]})
 
 
+def test_friedman_k2_guard_directs_to_pairwise():
+    """k=2 should raise with a message pointing to paired_t / wilcoxon."""
+    with pytest.raises(ValueError, match=r"paired_t_test_cv|wilcoxon"):
+        friedman_nemenyi({"a": [0.5, 0.6, 0.7], "b": [0.4, 0.5, 0.6]})
+
+
 def test_cd_diagram_ascii_render():
     fold_scores = {
         "b1": [0.9, 0.91, 0.89],

@@ -197,8 +197,11 @@ def friedman_nemenyi(
     """
     import scipy.stats as ss
     k = len(fold_scores)
-    if k < 2:
-        raise ValueError("friedman_nemenyi requires at least 2 baselines")
+    if k < 3:
+        raise ValueError(
+            "friedman_nemenyi requires at least 3 baselines; "
+            "use paired_t_test_cv or wilcoxon_signed_rank_cv for k=2"
+        )
     if k > 20:
         raise ValueError("Nemenyi q-table only goes up to k=20 baselines")
     names, ranks = _rank_matrix(fold_scores)

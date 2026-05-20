@@ -155,6 +155,21 @@ jurebes stats --runs run_a.json run_b.json run_c.json --metric f1_macro
 jurebes stats --pair run_a.json run_b.json --metric f1_macro
 ```
 
+## `jurebes confusions`
+
+List the most-confused intent pairs from a saved `ComparisonResult` JSON. Drives hard-negative pair mining for targeted LLM augmentation — see [`docs/reference/active-learning.md`](active-learning.md).
+
+| flag | default | meaning |
+|---|---|---|
+| `--run` (required) | — | path to a saved `ComparisonResult` JSON file |
+| `--top-n` | `10` | how many confusion pairs to print |
+| `--baseline` | first row | restrict to a specific baseline name |
+
+```bash
+jurebes benchmark --dataset data.csv --baselines @linear --save-run /tmp/run.json
+jurebes confusions --run /tmp/run.json --top-n 5
+```
+
 ## Exit codes
 
 - `0` — success.

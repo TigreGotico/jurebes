@@ -211,3 +211,27 @@ def test_cli_stats_pair_smoke(tmp_path: Path, dataset: Path, capsys):
     out = capsys.readouterr().out
     assert "paired_t" in out
     assert "wilcoxon" in out
+
+
+def test_cli_confusions_smoke(tmp_path: Path, capsys):
+    """`jurebes confusions --run X.json` lists top confused intent pairs."""
+    import json
+    run = tmp_path / "result.json"
+    run.write_text(json.dumps({
+        "scoring": ["accuracy", "f1_macro"],
+        "rows": [{
+            "name": "nb_multinomial",
+            "accuracy": 0.7,
+            "macro_f1": 0.65,
+            "per_class_f1": {"a": 1.0, "b": 0.5, "c": 0.8},
+            "confusion_matrix": [[9, 1, 0], [3, 5, 2], [0, 1, 8]],
+        }],
+    }))
+    rc = main(["confusions", "--run", str(run), "--top-n", "3"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "nb_multinomial" in out
+    assert "true_label" in out
+    # 'b -> a' is the biggest confusion (count 3)
+    lines = [ln for ln in out.splitlines() if " b " in f" {ln} " or ln.lstrip().startswith("b ")]
+    assert any("a" in ln for ln in lines)

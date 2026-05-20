@@ -7,5 +7,6 @@ In memory of Jurebes.
 
 from jurebes.core import IntentClassifier, IntentResult
 from jurebes.baselines import BASELINES
+from jurebes import active_learning
 
-__all__ = ["IntentClassifier", "IntentResult", "BASELINES"]
+__all__ = ["IntentClassifier", "IntentResult", "BASELINES", "active_learning"]

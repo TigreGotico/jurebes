@@ -61,6 +61,7 @@ A classical-ML intent classification research framework.
 - [Benchmark harness](reference/benchmark.md)
 - [Statistical tests](reference/stats.md)
 - [CLI](reference/cli.md)
+- [Active-learning primitives](reference/active-learning.md)
 - [Search subsystem](search.md)
 - [Slot taggers](slots.md) — dictionary, template, sklearn IOB, hybrid, CRF (`TAGGERS` registry)
 - [Slot tagger reference](reference/slots.md)

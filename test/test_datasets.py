@@ -118,7 +118,10 @@ def test_load_ovos_intents_optional_bracket(tmp_path: Path):
 
 def test_canonical_loader_registry():
     from jurebes.datasets.canonical import CANONICAL
-    assert set(CANONICAL.keys()) == {"snips", "clinc", "banking77", "hwu64", "atis", "massive"}
+    assert set(CANONICAL.keys()) == {
+        "snips", "clinc", "banking77", "hwu64", "atis", "massive",
+        "intents_for_eval",
+    }
 
 
 def _fake_load_hf_factory(seen):

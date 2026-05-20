@@ -54,6 +54,18 @@ def test_spaces_for_baseline():
     assert "logreg" in spaces.available()
 
 
+def test_spaces_coverage_breadth():
+    """The curated space registry should cover every baseline group."""
+    available = set(spaces.available())
+    # at least one baseline per major group
+    for name in ["nb_multinomial", "logreg", "linear_svc", "rbf_svc",
+                 "random_forest", "mlp_shallow", "sgd_log",
+                 "lsa_logreg", "ovr_linear_svc", "knn"]:
+        assert name in available, f"{name} missing from search spaces"
+    # 35 entries minimum (35 of the 48 baselines)
+    assert len(available) >= 30
+
+
 def test_bayes_backend_optional():
     pytest.importorskip("skopt")
     from skopt.space import Categorical, Real

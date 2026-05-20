@@ -2,17 +2,13 @@
 
 Pattern:
     1. For each intent, ask an LLM for N paraphrases.
-    2. Run jurebes on every paraphrase.
-    3. Bucket by (predicted == requested, confidence of requested intent):
-       - SKIP    : correct & high confidence  — model already knows it.
-       - HARD    : correct & low confidence   — uncertainty signal, keep.
-       - SUSPECT : wrong prediction           — judge before keeping.
-    4. Retrain jurebes on (original + HARD + judge-approved SUSPECT).
-    5. Re-evaluate on a FROZEN held-out set; stop when macro-F1 plateaus.
+    2. Use :func:`jurebes.active_learning.bucket_paraphrases` to sort
+       them into skip / hard / suspect buckets per intent.
+    3. Retrain jurebes on (original + HARD + judge-approved SUSPECT).
+    4. Re-evaluate on a FROZEN held-out set; stop when macro-F1 plateaus.
 
 The judge step is optional and pluggable: pass any callable
-``judge(intent, utterance) -> bool``. The default judge calls the LLM
-again with a yes/no preservation prompt.
+``judge(intent, utterance) -> bool``.
 """
 
 from __future__ import annotations
@@ -23,6 +19,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 from sklearn.metrics import f1_score
 
 from jurebes import IntentClassifier
+from jurebes.active_learning import bucket_paraphrases
 from jurebes.baselines import BASELINES
 
 
@@ -36,18 +33,6 @@ class AugmentRound:
     n_judged_drop: int = 0
     eval_macro_f1: Optional[float] = None
     added_samples: Dict[str, List[str]] = field(default_factory=dict)
-
-
-def _proba_for(clf: IntentClassifier, utt: str, intent: str) -> Tuple[str, float, float]:
-    """Return (top1_intent, top1_conf, conf_for_requested_intent)."""
-    ranked = clf.predict_proba(utt)
-    if not ranked:
-        return "", 0.0, 0.0
-    top = ranked[0]
-    for r in ranked:
-        if r.intent == intent:
-            return top.intent, top.confidence, r.confidence
-    return top.intent, top.confidence, 0.0
 
 
 def augment_loop(
@@ -96,33 +81,35 @@ def augment_loop(
         if round_idx == n_rounds - 1:
             break
 
+        generated: Dict[str, List[str]] = {}
         for intent, seeds in samples.items():
             try:
-                paras = paraphrase_fn(
+                generated[intent] = paraphrase_fn(
                     intent, seeds[:seeds_per_intent],
                     n=n_per_intent, **paraphrase_kwargs,
                 )
             except Exception:
-                continue
-            diag.n_generated += len(paras)
-            for p in paras:
-                if not p or p in samples[intent]:
-                    continue
-                top, top_conf, req_conf = _proba_for(clf, p, intent)
-                if top == intent and req_conf >= hard_conf_max:
-                    diag.n_skip += 1
-                elif top == intent:
-                    diag.n_hard += 1
+                generated[intent] = []
+        diag.n_generated = sum(len(v) for v in generated.values())
+
+        buckets = bucket_paraphrases(
+            clf, generated,
+            hard_conf_max=hard_conf_max,
+            dedupe_against=samples,
+        )
+        for intent, b in buckets.items():
+            diag.n_skip += len(b.skip)
+            diag.n_hard += len(b.hard)
+            diag.n_suspect += len(b.suspect)
+            for p in b.hard:
+                samples[intent].append(p)
+                diag.added_samples.setdefault(intent, []).append(p)
+            for p in b.suspect:
+                if judge_fn and bool(judge_fn(intent, p)):
+                    diag.n_judged_keep += 1
                     samples[intent].append(p)
                     diag.added_samples.setdefault(intent, []).append(p)
                 else:
-                    diag.n_suspect += 1
-                    keep = bool(judge_fn(intent, p)) if judge_fn else False
-                    if keep:
-                        diag.n_judged_keep += 1
-                        samples[intent].append(p)
-                        diag.added_samples.setdefault(intent, []).append(p)
-                    else:
-                        diag.n_judged_drop += 1
+                    diag.n_judged_drop += 1
 
     return clf, history

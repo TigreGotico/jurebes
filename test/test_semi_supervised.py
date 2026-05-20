@@ -15,6 +15,7 @@ from jurebes.semi_supervised import (
     select_high_confidence,
     self_train,
     co_train,
+    label_propagation,
 )
 
 
@@ -174,6 +175,25 @@ def test_co_train_adds_pseudo_labels_from_each_view():
     assert sum(res.added_per_round_view_a) > 0
     assert sum(res.added_per_round_view_b) > 0
     assert len(res.labeled_X) > len(X)
+
+
+def test_label_propagation_predicts_every_unlabeled_sample():
+    labeled_X = ["hello", "hi there", "hey", "good morning",
+                 "goodbye", "see you", "bye", "later"]
+    labeled_y = ["greet"] * 4 + ["bye"] * 4
+    unlabeled = ["hello friend", "see you tomorrow", "good day",
+                 "bye for now", "morning sunshine"]
+    res = label_propagation(labeled_X, labeled_y, unlabeled, method="propagation")
+    assert len(res.predicted_labels) == len(unlabeled)
+    assert set(res.predicted_labels).issubset({"greet", "bye"})
+
+
+def test_label_propagation_round_trips_on_labeled_only():
+    labeled_X = ["hello", "hi", "goodbye", "bye"]
+    labeled_y = ["greet", "greet", "bye", "bye"]
+    res = label_propagation(labeled_X, labeled_y, ["hi there"], method="spreading")
+    assert res.method == "spreading"
+    assert len(res.predicted_labels) == 1
 
 
 def test_pseudo_label_primitives_exposed():

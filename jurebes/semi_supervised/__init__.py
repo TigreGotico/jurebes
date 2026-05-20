@@ -18,6 +18,10 @@ from jurebes.semi_supervised.pseudo_label import (
 )
 from jurebes.semi_supervised.self_training import SelfTrainResult, self_train
 from jurebes.semi_supervised.co_training import CoTrainResult, co_train
+from jurebes.semi_supervised.label_propagation import (
+    LabelPropResult,
+    label_propagation,
+)
 
 __all__ = [
     "SELECTION_STRATEGIES",
@@ -27,4 +31,6 @@ __all__ = [
     "self_train",
     "CoTrainResult",
     "co_train",
+    "LabelPropResult",
+    "label_propagation",
 ]

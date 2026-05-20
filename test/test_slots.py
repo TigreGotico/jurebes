@@ -203,8 +203,54 @@ def test_hybrid_save_load(tmp_path):
 def test_taggers_registry_names():
     from jurebes.slots import TAGGERS
     names = set(TAGGERS.names())
-    assert {"dictionary", "template", "sklearn_iob", "hybrid"}.issubset(names)
-    assert len(TAGGERS) >= 4
+    assert {"dictionary", "template", "sklearn_iob", "knn", "hybrid"}.issubset(names)
+    assert len(TAGGERS) >= 5
+
+
+# ── KNNTagger ────────────────────────────────────────────────────────
+
+
+def _train_knn_for(samples):
+    from jurebes.slots import KNNTagger
+    t = KNNTagger(k=1)
+    t.add_entity("city", ["lisbon", "paris", "berlin"])
+    t.fit({"weather": samples})
+    return t
+
+
+def test_knn_tagger_basic():
+    t = _train_knn_for(["weather in {city}", "forecast for {city}"])
+    result = t.predict("weather in lisbon")
+    assert result.get("city") == "lisbon"
+
+
+def test_knn_tagger_unseen_entity_value():
+    """Strength of KNN: tag patterns transfer to values absent from the gazetteer."""
+    t = _train_knn_for(["weather in {city}"])
+    result = t.predict("weather in tokyo")
+    assert result.get("city") == "tokyo"
+
+
+def test_knn_tagger_no_match_returns_empty():
+    t = _train_knn_for(["weather in {city}"])
+    # input that doesn't align positionally — no city token at position 2
+    result = t.predict("hello there")
+    assert "city" not in result
+
+
+def test_knn_tagger_save_load(tmp_path):
+    from jurebes.slots import KNNTagger
+    t = _train_knn_for(["weather in {city}"])
+    path = tmp_path / "knn.joblib"
+    t.save(path)
+    loaded = KNNTagger.load(path)
+    assert loaded.predict("weather in paris").get("city") == "paris"
+
+
+def test_knn_in_taggers_registry():
+    from jurebes.slots import TAGGERS, KNNTagger
+    t = TAGGERS.build("knn")
+    assert isinstance(t, KNNTagger)
 
 
 def test_taggers_resolve_hybrid_builds_correctly():

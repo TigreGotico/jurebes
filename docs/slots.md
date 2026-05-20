@@ -12,6 +12,7 @@ Jurebes exposes five pluggable slot-tagging strategies through the
 | `dictionary`    | none     | no            | high on known    | stdlib only       |
 | `template`      | regex compile | yes      | high on matched templates | stdlib only |
 | `sklearn_iob`   | sklearn  | yes           | moderate         | scikit-learn      |
+| `knn`           | sklearn (NearestNeighbors) | yes | strong on templated patterns | scikit-learn |
 | `hybrid`        | per stage | yes          | high             | scikit-learn      |
 | `crf`           | sklearn-crfsuite | yes   | highest          | `jurebes[slots-crf]` |
 
@@ -86,6 +87,26 @@ h.predict("weather in berlin")       # {"city": "berlin"} via template fallback
 Constituent taggers run in order; earlier taggers win on key collisions.
 Pass a custom list via `HybridCascadeTagger(taggers=[...])`.
 
+## `KNNTagger` — nearest-utterance tag transfer
+
+```python
+from jurebes.slots import KNNTagger
+
+t = KNNTagger(k=3)
+t.add_entity("city", ["lisbon", "paris", "berlin"])
+t.fit({"weather": ["weather in {city}", "forecast for {city}"]})
+t.predict("weather in tokyo")        # {"city": "tokyo"}
+```
+
+Training utterances are TF-IDF-vectorised (char 3-5 n-grams by default);
+at predict time the input is matched against the `k` nearest neighbours
+via `sklearn.neighbors.NearestNeighbors`, and their IOB tags are
+majority-voted onto the input by token position. The pattern transfers
+to unseen entity values whenever the surrounding context matches a
+trained template — `tokyo` above was never registered as a `city`.
+
+Tune the surface vectoriser by passing your own `vectorizer=` argument.
+
 ## `CRFTagger` — optional sklearn-crfsuite
 
 Install the extra:
@@ -110,7 +131,7 @@ Same feature dictionaries as `SklearnIOBTagger`; under the hood trains
 ```python
 from jurebes.slots import TAGGERS
 
-TAGGERS.names()              # ['dictionary', 'template', 'sklearn_iob', 'hybrid', 'crf']
+TAGGERS.names()              # ['dictionary', 'template', 'sklearn_iob', 'knn', 'hybrid', 'crf']
 TAGGERS.build("hybrid")      # HybridCascadeTagger instance
 ```
 

@@ -4,6 +4,7 @@ Built-in entries:
     - ``dictionary``   : :class:`DictionaryTagger` (gazetteer regex)
     - ``template``     : :class:`TemplateTagger`   (template regex with `{slot}`)
     - ``sklearn_iob``  : :class:`SklearnIOBTagger` (per-token sklearn classifier)
+    - ``knn``          : :class:`KNNTagger` (nearest-utterance tag transfer)
     - ``hybrid``       : :class:`HybridCascadeTagger` (dict → template → IOB cascade)
     - ``crf``          : :class:`CRFTagger` (lazy — requires ``sklearn-crfsuite``;
                          install via ``pip install jurebes[slots-crf]``)
@@ -19,6 +20,7 @@ from typing import Callable, Dict, Set
 from jurebes.slots.dictionary import DictionaryTagger
 from jurebes.slots.hybrid import HybridCascadeTagger
 from jurebes.slots.iob import SklearnIOBTagger
+from jurebes.slots.knn import KNNTagger
 from jurebes.slots.template import TemplateTagger
 
 
@@ -70,5 +72,6 @@ TAGGERS = _TaggerRegistry()
 TAGGERS.register("dictionary", lambda: DictionaryTagger(), group="rule_based")
 TAGGERS.register("template", lambda: TemplateTagger(), group="rule_based")
 TAGGERS.register("sklearn_iob", lambda: SklearnIOBTagger(), group="ml")
+TAGGERS.register("knn", lambda: KNNTagger(), group="ml")
 TAGGERS.register("hybrid", lambda: HybridCascadeTagger(), group="hybrid")
 TAGGERS.register("crf", _build_crf, group="ml")

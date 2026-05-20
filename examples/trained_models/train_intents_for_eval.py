@@ -48,12 +48,14 @@ def run(lang: str = "en-US") -> str:
 
     intent_samples = data["intent_samples"]
     entity_samples = data["entity_samples"]
-    test = data["test"]
+    test_all = data["test"]
+    test = [r for r in test_all if r.get("expected_intent")]
+    ood_count = len(test_all) - len(test)
 
     md.append(f"- intents: **{len(intent_samples)}**")
     md.append(f"- templates: **{sum(len(v) for v in intent_samples.values())}**")
     md.append(f"- entities: **{len(entity_samples)}**")
-    md.append(f"- test utterances: **{len(test)}**")
+    md.append(f"- test utterances: **{len(test)}** in-domain (+{ood_count} OOD rows excluded)")
     md.append("")
 
     # ── intent classification ────────────────────────────────────────
@@ -92,7 +94,13 @@ def run(lang: str = "en-US") -> str:
     md.append("Train each tagger on the same templates + entity gazetteer; "
               "evaluate against the gold `expected_slots` on the test split.\n")
 
-    test_slot_pairs = [(r["utterance"], r["expected_slots"]) for r in test]
+    test_slot_pairs = [
+        (
+            r["utterance"],
+            {k: str(v) for k, v in (r.get("expected_slots") or {}).items() if v is not None},
+        )
+        for r in test
+    ]
 
     tagger_names = ["dictionary", "template", "sklearn_iob", "knn", "hybrid"]
     try:
@@ -123,8 +131,9 @@ def run(lang: str = "en-US") -> str:
             clf.add_intent(intent_id, samples)
         clf.fit()
         for r, p in zip(test, [clf.predict(u).intent for u in test_utts]):
-            by_domain_true[r["domain"]].append(r["expected_intent"])
-            by_domain_pred[r["domain"]].append(p)
+            dom = r.get("domain") or "(unknown)"
+            by_domain_true[dom].append(r["expected_intent"])
+            by_domain_pred[dom].append(p)
         domain_rows = []
         for d in sorted(by_domain_true):
             acc = accuracy_score(by_domain_true[d], by_domain_pred[d])

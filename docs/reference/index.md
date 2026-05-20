@@ -15,7 +15,8 @@ Module-by-module reference for every public surface.
 Related pages outside the reference tree:
 
 - [../search.md](../search.md) — search subsystem narrative and backend matrix
-- [../slots.md](../slots.md) — `SklearnIOBTagger` and `token_features`
+- [slots.md](slots.md) — `TAGGERS` registry plus `DictionaryTagger`, `TemplateTagger`, `SklearnIOBTagger`, `HybridCascadeTagger`, `CRFTagger`
+- [../slots.md](../slots.md) — slot-tagging strategies guide
 - [../opm.md](../opm.md) — OVOS pipeline plugin overview
 - [../research.md](../research.md) — research-workflow cookbook
 

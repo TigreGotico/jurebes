@@ -157,18 +157,25 @@ print(to_markdown(result))
 
 ## Slots
 
-Optional per-token IOB tagger:
+Five pluggable taggers covering dictionary, template, sklearn IOB,
+hybrid cascade, and CRF (optional extra). All are accessible through
+the `TAGGERS` registry and share the same protocol.
 
 ```python
 from jurebes import IntentClassifier, BASELINES
-from jurebes.slots import SklearnIOBTagger
+from jurebes.slots import TAGGERS, SklearnIOBTagger
 
 clf = IntentClassifier(BASELINES.build("logreg"), tagger=SklearnIOBTagger())
+# or by name:
+clf = IntentClassifier(BASELINES.build("logreg"), tagger="hybrid")
+
 clf.add_entity("name", ["bob", "alice"])
 clf.add_intent("name", ["my name is {name}", "call me {name}"])
 clf.add_intent("hello", ["hello", "hi"])
 clf.fit()
 clf.predict("my name is bob").entities  # -> {"name": "bob"}
+
+TAGGERS.names()  # ['dictionary', 'template', 'sklearn_iob', 'hybrid', 'crf']
 ```
 
 See [`docs/`](docs/) for the research guide, slot tagger details, and the OVOS deployment notes:

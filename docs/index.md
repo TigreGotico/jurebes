@@ -61,7 +61,8 @@ A classical-ML intent classification research framework.
 - [Statistical tests](reference/stats.md)
 - [CLI](reference/cli.md)
 - [Search subsystem](search.md)
-- [Slot tagger](slots.md)
+- [Slot taggers](slots.md) — dictionary, template, sklearn IOB, hybrid, CRF (`TAGGERS` registry)
+- [Slot tagger reference](reference/slots.md)
 - [OVOS pipeline plugin](opm.md)
 
 ## Cookbook

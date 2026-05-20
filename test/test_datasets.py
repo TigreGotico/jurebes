@@ -120,7 +120,7 @@ def test_canonical_loader_registry():
     from jurebes.datasets.canonical import CANONICAL
     assert set(CANONICAL.keys()) == {
         "snips", "clinc", "banking77", "hwu64", "atis", "massive",
-        "intents_for_eval",
+        "intents_for_eval", "massive_templates",
     }
 
 

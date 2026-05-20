@@ -14,6 +14,7 @@ from jurebes.datasets.canonical.clinc import load_clinc
 from jurebes.datasets.canonical.hwu64 import load_hwu64
 from jurebes.datasets.canonical.intents_for_eval import load_intents_for_eval
 from jurebes.datasets.canonical.massive import load_massive
+from jurebes.datasets.canonical.massive_templates import load_massive_templates
 from jurebes.datasets.canonical.snips import load_snips
 
 CANONICAL: Dict[str, Callable] = {
@@ -24,6 +25,7 @@ CANONICAL: Dict[str, Callable] = {
     "atis": load_atis,
     "massive": load_massive,
     "intents_for_eval": load_intents_for_eval,
+    "massive_templates": load_massive_templates,
 }
 
 __all__ = [
@@ -34,5 +36,6 @@ __all__ = [
     "load_atis",
     "load_massive",
     "load_intents_for_eval",
+    "load_massive_templates",
     "CANONICAL",
 ]

@@ -244,3 +244,35 @@ def test_crf_tagger_smoke():
     out = t.predict("my name is bob")
     assert out.get("name") == "bob"
 
+
+# ── benchmark.compare_taggers ───────────────────────────────────────
+
+
+def test_compare_taggers_smoke():
+    from jurebes.benchmark.slots import compare_taggers
+
+    intent_samples = {
+        "weather": [
+            "weather in {city}",
+            "what is the weather in {city}",
+            "tell me the weather in {city}",
+            "how is the weather in {city}",
+        ],
+        "greet": ["hello there", "hi friend", "hey", "hello"],
+    }
+    entity_samples = {"city": ["paris", "lisbon", "berlin", "madrid"]}
+    test = [
+        ("weather in paris", {"city": "paris"}),
+        ("weather in lisbon", {"city": "lisbon"}),
+        ("weather in berlin", {"city": "berlin"}),
+        ("weather in madrid", {"city": "madrid"}),
+        ("hello there", {}),
+        ("hi friend", {}),
+    ]
+    result = compare_taggers(
+        ["dictionary", "template", "sklearn_iob", "hybrid"],
+        intent_samples, entity_samples, test,
+    )
+    assert len(result.rows) == 4
+    for r in result.rows:
+        assert 0.0 <= r.exact_match <= 1.0

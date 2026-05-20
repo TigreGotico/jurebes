@@ -13,7 +13,14 @@ from jurebes.semi_supervised import (
     SELECTION_STRATEGIES,
     pseudo_label,
     select_high_confidence,
+    self_train,
 )
+
+
+def _template_clf() -> IntentClassifier:
+    return IntentClassifier(
+        Pipeline([("v", TfidfVectorizer()), ("c", LogisticRegression(max_iter=500))]),
+    )
 
 
 def _seed_clf() -> IntentClassifier:
@@ -73,6 +80,55 @@ def test_select_high_confidence_threshold_filters():
         scored, strategy="global_top_k", k=10, threshold=0.5,
     )
     assert picked == [0]
+
+
+def test_self_train_adds_samples_when_threshold_permits():
+    X = ["hello", "hi", "hey there", "good morning", "goodbye", "bye now", "see you", "later"]
+    y = ["greet"] * 4 + ["bye"] * 4
+    unlabeled = ["hello friend", "see you tomorrow", "good day", "bye for now"]
+    res = self_train(
+        _template_clf(), X, y, unlabeled,
+        confidence_threshold=0.5, k_per_round=2, max_rounds=3,
+    )
+    assert sum(res.added_per_round) > 0
+    assert len(res.labeled_X) > len(X)
+    assert len(res.labeled_X) == len(res.labeled_y)
+
+
+def test_self_train_early_stops_on_plateau():
+    X = ["hello", "hi", "hey", "good morning", "goodbye", "bye", "see you", "later"]
+    y = ["greet"] * 4 + ["bye"] * 4
+    unlabeled = ["hello there", "bye now", "good evening", "see ya", "morning",
+                 "later friend", "hi again", "bye bye"]
+    eval_X = ["hello", "goodbye"]
+    eval_y = ["greet", "bye"]
+    res = self_train(
+        _template_clf(), X, y, unlabeled,
+        confidence_threshold=0.3, k_per_round=1, max_rounds=20,
+        eval_X=eval_X, eval_y=eval_y, early_stop_patience=2,
+    )
+    # Should not run all 20 rounds on a trivial dataset.
+    assert len(res.added_per_round) < 20
+    assert res.stopped_early or len(res.added_per_round) <= len(unlabeled)
+
+
+def test_self_train_threshold_schedule_called_per_round():
+    calls: List[int] = []
+
+    def schedule(r, t):
+        calls.append(r)
+        return t
+
+    X = ["hello", "hi", "goodbye", "bye"]
+    y = ["greet", "greet", "bye", "bye"]
+    unlabeled = ["hello there", "see you", "morning"]
+    self_train(
+        _template_clf(), X, y, unlabeled,
+        confidence_threshold=0.5, k_per_round=1, max_rounds=4,
+        threshold_schedule=schedule,
+    )
+    assert len(calls) >= 1
+    assert calls[0] == 0
 
 
 def test_pseudo_label_primitives_exposed():

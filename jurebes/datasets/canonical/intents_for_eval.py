@@ -23,6 +23,25 @@ SUPPORTED_LANGS = (
 _HF_ID = "OpenVoiceOS/intents-for-eval"
 
 
+def _load_test_jsonl_directly(lang: str) -> List[Dict[str, Any]]:
+    """Fallback JSONL loader bypassing pyarrow schema inference."""
+    import json
+    from huggingface_hub import hf_hub_download
+
+    path = hf_hub_download(
+        repo_id=_HF_ID,
+        repo_type="dataset",
+        filename=f"{lang}/test.jsonl",
+    )
+    rows = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    return rows
+
+
 def load_intents_for_eval(lang: str = "en-US") -> Dict[str, Any]:
     """Load the templates / keywords / test triple for one language.
 
@@ -49,7 +68,12 @@ def load_intents_for_eval(lang: str = "en-US") -> Dict[str, Any]:
 
     templates = load_dataset(_HF_ID, f"{lang}-templates")["train"]
     keywords = load_dataset(_HF_ID, f"{lang}-keywords")["train"]
-    test = load_dataset(_HF_ID, f"{lang}-test")["test"]
+    try:
+        test = list(load_dataset(_HF_ID, f"{lang}-test")["test"])
+    except Exception:
+        # pyarrow JSON inference can choke when slot values cross int/string
+        # boundaries; fall back to direct JSONL parsing of the raw test file.
+        test = _load_test_jsonl_directly(lang)
 
     intent_samples: Dict[str, List[str]] = {}
     entity_samples: Dict[str, List[str]] = {}

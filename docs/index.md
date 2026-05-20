@@ -4,7 +4,7 @@
 
 A classical-ML intent classification research framework.
 
-> *Named in memory of Jurebes, the author's dog.*
+> *Named in memory of Jurebes, the best dog.*
 
 ## Start here
 

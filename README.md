@@ -6,7 +6,7 @@ A classical-ML intent classification research framework — pure scikit-learn, n
 
 Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind a small intent-classification API, plus a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
 
-> *Named in memory of Jurebes, the author's dog.*
+> *Named in memory of Jurebes, the best dog.*
 
 ## Install
 

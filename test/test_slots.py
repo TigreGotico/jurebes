@@ -196,3 +196,28 @@ def test_hybrid_save_load(tmp_path):
     loaded = HybridCascadeTagger.load(p)
     assert loaded.predict("weather in paris") == {"city": "paris"}
 
+
+# ── TAGGERS registry ────────────────────────────────────────────────
+
+
+def test_taggers_registry_names():
+    from jurebes.slots import TAGGERS
+    names = set(TAGGERS.names())
+    assert {"dictionary", "template", "sklearn_iob", "hybrid"}.issubset(names)
+    assert len(TAGGERS) >= 4
+
+
+def test_taggers_resolve_hybrid_builds_correctly():
+    from jurebes.slots import TAGGERS
+    from jurebes.slots.hybrid import HybridCascadeTagger
+    h = TAGGERS.build("hybrid")
+    assert isinstance(h, HybridCascadeTagger)
+    assert len(h.taggers) == 3
+
+
+def test_intent_classifier_accepts_tagger_string():
+    from jurebes.core import IntentClassifier
+    from jurebes.slots.dictionary import DictionaryTagger
+    clf = IntentClassifier(tagger="dictionary")
+    assert isinstance(clf.tagger, DictionaryTagger)
+

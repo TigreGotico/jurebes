@@ -75,6 +75,9 @@ class IntentClassifier:
         else:
             raise ValueError(f"unknown calibrate mode: {calibrate!r}")
         self.estimator = estimator
+        if isinstance(tagger, str):
+            from jurebes.slots import TAGGERS
+            tagger = TAGGERS.build(tagger)
         self.tagger = tagger
         self._samples: Dict[str, List[str]] = {}
         self._entity_samples: Dict[str, List[str]] = {}

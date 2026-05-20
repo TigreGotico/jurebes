@@ -181,6 +181,18 @@ def _ae_activation(name: str):
     raise ValueError(f"unsupported activation: {name}")
 
 
+def _auto_sizes(n_features: int) -> tuple:
+    """Heuristic autoencoder layer sizes given the input dimension.
+
+    Returns a symmetric ``(wide, narrow, wide)`` triple where the bottleneck
+    scales with ``sqrt(n_features)`` so the latent capacity adapts to the
+    actual TF-IDF vocab size of the corpus.
+    """
+    wide = max(64, int(2 * np.sqrt(n_features)))
+    bottleneck = max(32, int(np.sqrt(n_features)))
+    return (wide, bottleneck, wide)
+
+
 class SklearnAutoencoder(BaseEstimator, TransformerMixin):
     """Neural-bottleneck autoencoder built on `MLPRegressor` fitted to ``y = X``.
 
@@ -188,19 +200,32 @@ class SklearnAutoencoder(BaseEstimator, TransformerMixin):
     including) the bottleneck using ``mlp.coefs_`` / ``mlp.intercepts_`` in
     pure numpy. ``inverse_transform`` continues the forward pass through the
     remaining decoder layers. Sparse input is densified via ``.toarray()``.
+
+    Parameters
+    ----------
+    hidden_layer_sizes : tuple or "auto"
+        Layer widths including the bottleneck. ``"auto"`` (default) scales
+        the layers from the input feature count at fit time so the bottleneck
+        does not become artificially narrow on high-class-count datasets.
+    noise_level : float
+        Denoising autoencoder noise standard deviation. When > 0, Gaussian
+        noise is added to the input at fit time while the target stays clean;
+        the model learns a noise-robust reconstruction (Vincent et al. 2008).
     """
 
     def __init__(
         self,
-        hidden_layer_sizes=(64, 16, 64),
+        hidden_layer_sizes="auto",
         bottleneck_index: Optional[int] = None,
         activation: str = "relu",
         solver: str = "adam",
         alpha: float = 1e-4,
-        max_iter: int = 200,
+        max_iter: int = 500,
         random_state: Optional[int] = 0,
         learning_rate_init: float = 1e-3,
-        early_stopping: bool = False,
+        early_stopping: bool = True,
+        n_iter_no_change: int = 10,
+        noise_level: float = 0.0,
     ):
         self.hidden_layer_sizes = hidden_layer_sizes
         self.bottleneck_index = bottleneck_index
@@ -211,24 +236,38 @@ class SklearnAutoencoder(BaseEstimator, TransformerMixin):
         self.random_state = random_state
         self.learning_rate_init = learning_rate_init
         self.early_stopping = early_stopping
+        self.n_iter_no_change = n_iter_no_change
+        self.noise_level = noise_level
 
     def _densify(self, X):
         if hasattr(X, "toarray"):
             X = X.toarray()
         return np.asarray(X, dtype=np.float64)
 
+    def _resolve_sizes(self, n_features: int) -> tuple:
+        if self.hidden_layer_sizes == "auto":
+            return _auto_sizes(n_features)
+        return tuple(self.hidden_layer_sizes)
+
     def _resolve_bottleneck(self) -> int:
-        sizes = list(self.hidden_layer_sizes)
+        sizes = list(self.layer_sizes_)
         if self.bottleneck_index is None:
             return int(np.argmin(sizes))
         return int(self.bottleneck_index)
 
     def fit(self, X, y=None):
         from sklearn.neural_network import MLPRegressor
+        from sklearn.utils import check_random_state
 
         Xd = self._densify(X)
+        self.layer_sizes_ = self._resolve_sizes(Xd.shape[1])
+        if self.noise_level > 0:
+            rng = check_random_state(self.random_state)
+            X_in = Xd + rng.normal(0.0, self.noise_level, size=Xd.shape)
+        else:
+            X_in = Xd
         self.mlp_ = MLPRegressor(
-            hidden_layer_sizes=tuple(self.hidden_layer_sizes),
+            hidden_layer_sizes=self.layer_sizes_,
             activation=self.activation,
             solver=self.solver,
             alpha=self.alpha,
@@ -236,8 +275,9 @@ class SklearnAutoencoder(BaseEstimator, TransformerMixin):
             random_state=self.random_state,
             learning_rate_init=self.learning_rate_init,
             early_stopping=self.early_stopping,
+            n_iter_no_change=self.n_iter_no_change,
         )
-        self.mlp_.fit(Xd, Xd)
+        self.mlp_.fit(X_in, Xd)
         self.bottleneck_index_ = self._resolve_bottleneck()
         self.n_features_in_ = Xd.shape[1]
         return self
@@ -285,12 +325,15 @@ def _toarray(X):
     return X.toarray() if hasattr(X, "toarray") else X
 
 
-def autoencoder(hidden_layer_sizes=(64, 16, 64), base=None, **kwargs):
+def autoencoder(hidden_layer_sizes="auto", base=None, **kwargs):
     """Build a Pipeline ending in a `SklearnAutoencoder` bottleneck.
 
     When ``base`` is provided, the pipeline is ``[base, dense, autoencoder]``;
     a `FunctionTransformer` densifies sparse output from the base. Without a
     base, returns a single-step pipeline wrapping the autoencoder directly.
+
+    Default ``hidden_layer_sizes="auto"`` derives reasonable layer widths
+    from the input feature dimension at fit time.
     """
     from sklearn.preprocessing import FunctionTransformer
     ae = SklearnAutoencoder(hidden_layer_sizes=hidden_layer_sizes, **kwargs)
@@ -300,6 +343,127 @@ def autoencoder(hidden_layer_sizes=(64, 16, 64), base=None, **kwargs):
         ("base", base),
         ("dense", FunctionTransformer(_toarray, accept_sparse=True)),
         ("ae", ae),
+    ])
+
+
+def denoising_autoencoder(noise_level: float = 0.1, hidden_layer_sizes="auto",
+                          base=None, **kwargs):
+    """Build a Pipeline ending in a denoising `SklearnAutoencoder`.
+
+    Convenience wrapper around :func:`autoencoder` that sets ``noise_level``
+    (Vincent et al. 2008). Gaussian noise of the given standard deviation
+    is added to the input at training time only; ``transform`` runs on the
+    clean input.
+    """
+    kwargs.pop("noise_level", None)
+    return autoencoder(hidden_layer_sizes=hidden_layer_sizes, base=base,
+                       noise_level=noise_level, **kwargs)
+
+
+class LabelGuidedEmbeddingsTransformer(BaseEstimator, TransformerMixin):
+    """Label-guided neural embedding (Apache-2.0 port).
+
+    Trains an `MLPClassifier` end-to-end on ``(X, y)``; ``transform`` returns
+    the activations of a chosen hidden layer, optionally densified via PCA
+    so the output dimension stays fixed regardless of layer width.
+
+    The training objective is class discrimination, not reconstruction, so
+    the bottleneck preserves class-discriminative axes by construction.
+    This addresses the "unsupervised reconstruction misaligned with
+    classification" failure mode of vanilla autoencoders on high-class-count
+    datasets.
+
+    Ported from `guided-categorical-embeddings-sklearn`
+    (https://github.com/TigreGotico/guided-categorical-embeddings-sklearn,
+    Apache-2.0); adapted to jurebes' sparse-input + auto-sized defaults.
+    """
+
+    def __init__(
+        self,
+        hidden_layer_sizes="auto",
+        hidden_layer_index: int = 0,
+        embedding_size: Optional[int] = None,
+        max_iter: int = 500,
+        random_state: int = 0,
+        early_stopping: bool = False,
+        n_iter_no_change: int = 10,
+    ):
+        # ``early_stopping`` defaults to False because MLPClassifier's
+        # internal validation-score check (np.isnan on y_pred) trips on
+        # string class labels. Users who pass integer labels can flip it on.
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.hidden_layer_index = hidden_layer_index
+        self.embedding_size = embedding_size
+        self.max_iter = max_iter
+        self.random_state = random_state
+        self.early_stopping = early_stopping
+        self.n_iter_no_change = n_iter_no_change
+
+    def _densify(self, X):
+        if hasattr(X, "toarray"):
+            X = X.toarray()
+        return np.asarray(X, dtype=np.float64)
+
+    def _resolve_sizes(self, n_features: int) -> tuple:
+        if self.hidden_layer_sizes == "auto":
+            return _auto_sizes(n_features)
+        return tuple(self.hidden_layer_sizes)
+
+    def fit(self, X, y):
+        from sklearn.decomposition import PCA
+        from sklearn.neural_network import MLPClassifier
+
+        Xd = self._densify(X)
+        self.layer_sizes_ = self._resolve_sizes(Xd.shape[1])
+        self.mlp_ = MLPClassifier(
+            hidden_layer_sizes=self.layer_sizes_,
+            max_iter=self.max_iter,
+            random_state=self.random_state,
+            early_stopping=self.early_stopping,
+            n_iter_no_change=self.n_iter_no_change,
+        )
+        self.mlp_.fit(Xd, y)
+        self.n_classes_ = len(set(y))
+        hidden = self._activations(Xd)
+        target = self.embedding_size or 3 * self.n_classes_
+        n_components = min(target, hidden.shape[1])
+        self.pca_ = PCA(n_components=n_components, random_state=self.random_state)
+        self.pca_.fit(hidden)
+        self.n_features_in_ = Xd.shape[1]
+        return self
+
+    def _activations(self, X: np.ndarray) -> np.ndarray:
+        coefs = self.mlp_.coefs_
+        intercepts = self.mlp_.intercepts_
+        act = X
+        for i in range(self.hidden_layer_index + 1):
+            act = np.dot(act, coefs[i]) + intercepts[i]
+            act = np.maximum(act, 0)  # ReLU
+        return act
+
+    def transform(self, X):
+        Xd = self._densify(X)
+        return self.pca_.transform(self._activations(Xd))
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X, y).transform(X)
+
+
+def label_guided(hidden_layer_sizes="auto", base=None, **kwargs):
+    """Build a Pipeline ending in a `LabelGuidedEmbeddingsTransformer`.
+
+    The classification head trained inside the embedder is discarded; only
+    the PCA-densified hidden activations flow downstream to the user's
+    classifier.
+    """
+    from sklearn.preprocessing import FunctionTransformer
+    lge = LabelGuidedEmbeddingsTransformer(hidden_layer_sizes=hidden_layer_sizes, **kwargs)
+    if base is None:
+        return Pipeline([("lge", lge)])
+    return Pipeline([
+        ("base", base),
+        ("dense", FunctionTransformer(_toarray, accept_sparse=True)),
+        ("lge", lge),
     ])
 
 

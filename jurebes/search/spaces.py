@@ -107,8 +107,13 @@ _SPACES: Dict[str, Dict[str, Any]] = {
     }),
 
     # ── reduced-dim (downstream clf only; feat steps are nested) ──
-    "lsa_logreg": {"clf__C": [0.5, 1.0, 2.0, 4.0]},
-    "nmf_logreg": {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "lsa_logreg":                  {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "nmf_logreg":                  {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "autoencoder_logreg":          {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "autoencoder_logreg_wide":     {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "autoencoder_logreg_deep":     {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "denoising_autoencoder_logreg": {"clf__C": [0.5, 1.0, 2.0, 4.0]},
+    "label_guided_logreg":         {"clf__C": [0.5, 1.0, 2.0, 4.0]},
 
     # ── feature engineering ────────────────────────────────────────
     "text_stats_logreg":       {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0]},

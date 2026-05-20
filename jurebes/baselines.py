@@ -39,8 +39,10 @@ from jurebes.featurizers import (
     categorical,
     char_word_union,
     count_word,
+    denoising_autoencoder,
     feature_union,
     hashing_word,
+    label_guided,
     lda_topics,
     lsa,
     nmf,
@@ -175,6 +177,25 @@ BASELINE_SPECS: Dict[str, Callable[[], Pipeline]] = {
     "autoencoder_rbf_svc": lambda: _p(
         autoencoder(base=tfidf_word()), SVC(kernel="rbf", probability=True),
     ),
+    "autoencoder_logreg_wide": lambda: _p(
+        autoencoder(base=tfidf_word(), hidden_layer_sizes=(256, 128, 256)),
+        LogisticRegression(max_iter=1000),
+    ),
+    "autoencoder_logreg_deep": lambda: _p(
+        autoencoder(base=tfidf_word(), hidden_layer_sizes=(256, 128, 64, 128, 256)),
+        LogisticRegression(max_iter=1000),
+    ),
+    "denoising_autoencoder_logreg": lambda: _p(
+        denoising_autoencoder(base=tfidf_word(), noise_level=0.1),
+        LogisticRegression(max_iter=1000),
+    ),
+    # ── label-guided neural embedding (supervised bottleneck) ──────
+    "label_guided_logreg": lambda: _p(
+        label_guided(base=tfidf_word()), LogisticRegression(max_iter=1000),
+    ),
+    "label_guided_linear_svc": lambda: _p(
+        label_guided(base=tfidf_word()), _cal(LinearSVC()),
+    ),
     # ── categorical (dict-of-string input, not text) ───────────────
     "categorical_logreg": lambda: _p(categorical(), LogisticRegression(max_iter=1000)),
     "categorical_random_forest": lambda: _p(categorical(), RandomForestClassifier()),
@@ -212,6 +233,9 @@ _GROUPS: Dict[str, Set[str]] = {
 }
 _GROUPS["reduced_dim"].update({
     "autoencoder_logreg", "autoencoder_linear_svc", "autoencoder_rbf_svc",
+    "autoencoder_logreg_wide", "autoencoder_logreg_deep",
+    "denoising_autoencoder_logreg",
+    "label_guided_logreg", "label_guided_linear_svc",
 })
 _GROUPS["naive_bayes"].add("complement_nb_count")
 _GROUPS["linear"].update({"hashing_sgd_log", "hashing_sgd_hinge"})

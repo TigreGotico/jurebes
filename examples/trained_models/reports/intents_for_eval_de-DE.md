@@ -1,0 +1,51 @@
+# intents-for-eval (de-DE) training report
+
+- intents: **50**
+- templates: **1000**
+- entities: **24**
+- test utterances: **1700** in-domain (+50 OOD rows excluded)
+
+## Intent classification
+
+Train on Padatious-style templates, evaluate top-1 intent on the test split.
+
+| baseline | accuracy | macro_f1 |
+|---|---|---|
+| nb_multinomial | 0.6894 | 0.6875 |
+| voting_soft | 0.6565 | 0.6475 |
+| logreg | 0.6553 | 0.6488 |
+| linear_svc | 0.6518 | 0.6434 |
+| ovr_linear_svc | 0.6518 | 0.6434 |
+| linear_svc_char | 0.6200 | 0.5925 |
+| logreg_char | 0.5900 | 0.5540 |
+
+**winning baseline (intent):** `nb_multinomial`
+
+## Slot extraction
+
+Train each tagger on the same templates + entity gazetteer; evaluate against the gold `expected_slots` on the test split.
+
+| tagger | slot_precision | slot_recall | slot_f1 | exact_match | n_test |
+| --- | --- | --- | --- | --- | --- |
+| dictionary | 0.8663 | 0.8134 | 0.8390 | 0.8141 | 1700 |
+| template | 0.6380 | 0.4394 | 0.5204 | 0.5929 | 1700 |
+| sklearn_iob | 0.8731 | 0.8340 | 0.8531 | 0.8647 | 1700 |
+| knn | 0.5381 | 0.4858 | 0.5106 | 0.6229 | 1700 |
+| hybrid | 0.6907 | 0.8831 | 0.7751 | 0.7465 | 1700 |
+| crf | 0.8993 | 0.8366 | 0.8668 | 0.8694 | 1700 |
+
+## Per-domain intent accuracy
+
+Using the winning baseline `nb_multinomial`.
+| domain | n | accuracy |
+|---|---|---|
+| calendar | 172 | 0.6570 |
+| communication | 172 | 0.7616 |
+| media | 166 | 0.6446 |
+| navigation | 170 | 0.6824 |
+| news | 176 | 0.5795 |
+| search_qa | 168 | 0.5893 |
+| smarthome | 170 | 0.7529 |
+| system_control | 166 | 0.6867 |
+| timers_alarms | 170 | 0.8235 |
+| weather | 170 | 0.7176 |

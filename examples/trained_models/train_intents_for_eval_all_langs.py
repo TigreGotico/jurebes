@@ -45,19 +45,19 @@ def _extract_best_slot_row(report: str):
     rows = []
     for line in m.group(1).strip().splitlines():
         cells = [c.strip() for c in line.strip("|").split("|")]
-        if len(cells) >= 4:
+        if len(cells) >= 5:
             rows.append(cells)
     if not rows:
         return None, None, None, None
-    # row layout: tagger | precision | recall | f1 | exact_match (varies)
+    # row layout: tagger | precision | recall | f1 | exact_match | n_test
     def _as_float(s):
         try:
             return float(s)
         except ValueError:
             return -1.0
-    rows.sort(key=lambda r: _as_float(r[-1] if len(r) >= 5 else r[-1]), reverse=True)
+    rows.sort(key=lambda r: _as_float(r[4]), reverse=True)
     best = rows[0]
-    return best[0], best[1] if len(best) > 1 else "-", best[3] if len(best) > 3 else "-", best[-1]
+    return best[0], best[1], best[3], best[4]
 
 
 def main():

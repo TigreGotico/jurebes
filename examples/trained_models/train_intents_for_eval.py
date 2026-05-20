@@ -47,13 +47,15 @@ def run(lang: str = "en-US") -> str:
         return f"# intents-for-eval ({lang}) — load failed\n\n`{type(e).__name__}: {e}`"
 
     intent_samples = data["intent_samples"]
+    template_samples = data["template_samples"]
     entity_samples = data["entity_samples"]
     test_all = data["test"]
     test = [r for r in test_all if r.get("expected_intent")]
     ood_count = len(test_all) - len(test)
 
     md.append(f"- intents: **{len(intent_samples)}**")
-    md.append(f"- templates: **{sum(len(v) for v in intent_samples.values())}**")
+    md.append(f"- templates: **{sum(len(v) for v in template_samples.values())}** "
+              f"→ **{sum(len(v) for v in intent_samples.values())}** after slot expansion")
     md.append(f"- entities: **{len(entity_samples)}**")
     md.append(f"- test utterances: **{len(test)}** in-domain (+{ood_count} OOD rows excluded)")
     md.append("")
@@ -112,7 +114,7 @@ def run(lang: str = "en-US") -> str:
     try:
         result = compare_taggers(
             tagger_names,
-            intent_samples,
+            template_samples,
             entity_samples,
             test_slot_pairs,
         )

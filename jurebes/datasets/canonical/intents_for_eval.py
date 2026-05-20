@@ -13,7 +13,8 @@ Each language config exposes three sub-configs on HuggingFace:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Tuple
 
 SUPPORTED_LANGS = (
     "en-US", "pt-PT", "pt-BR", "es-ES", "fr-FR", "de-DE",
@@ -42,7 +43,47 @@ def _load_test_jsonl_directly(lang: str) -> List[Dict[str, Any]]:
     return rows
 
 
-def load_intents_for_eval(lang: str = "en-US") -> Dict[str, Any]:
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
+
+
+def _expand_template(template: str, slots: List[Dict[str, Any]],
+                     expand_to: int = 3) -> Tuple[List[str], List[str]]:
+    """Substitute slot examples into a template.
+
+    Returns ``(expanded, originals)``: ``expanded`` is the list of
+    realised utterances (`"play {song}"` → `["play bohemian rhapsody",
+    ...]`), ``originals`` is the same template kept unchanged so a
+    classifier that wants to learn placeholder patterns can also see it.
+
+    Multi-slot templates use a zip across the slot example lists so the
+    expansion stays at ~``expand_to`` variants instead of exploding into
+    a cartesian product.
+    """
+    placeholders = _PLACEHOLDER_RE.findall(template)
+    if not placeholders:
+        return [template], [template]
+
+    examples_by_slot: Dict[str, List[str]] = {}
+    for slot in slots or []:
+        name = slot.get("name")
+        examples = [e for e in (slot.get("examples") or []) if e]
+        if name and examples:
+            examples_by_slot[name] = examples
+    if not all(p in examples_by_slot for p in placeholders):
+        return [template], [template]
+
+    n = min(expand_to, *(len(examples_by_slot[p]) for p in placeholders))
+    expanded: List[str] = []
+    for i in range(n):
+        out = template
+        for p in placeholders:
+            out = out.replace("{" + p + "}", examples_by_slot[p][i])
+        expanded.append(out)
+    return expanded, [template]
+
+
+def load_intents_for_eval(lang: str = "en-US", expand_templates: bool = True,
+                          expansions_per_template: int = 3) -> Dict[str, Any]:
     """Load the templates / keywords / test triple for one language.
 
     Returns a dict::
@@ -76,10 +117,20 @@ def load_intents_for_eval(lang: str = "en-US") -> Dict[str, Any]:
         test = _load_test_jsonl_directly(lang)
 
     intent_samples: Dict[str, List[str]] = {}
+    template_samples: Dict[str, List[str]] = {}
     entity_samples: Dict[str, List[str]] = {}
     for row in templates:
-        intent_samples.setdefault(row["intent_id"], []).append(row["template"])
-        for slot in row["slots"] or []:
+        slots = row["slots"] or []
+        template_samples.setdefault(row["intent_id"], []).append(row["template"])
+        if expand_templates:
+            expanded, _ = _expand_template(
+                row["template"], slots, expansions_per_template,
+            )
+            for utt in expanded:
+                intent_samples.setdefault(row["intent_id"], []).append(utt)
+        else:
+            intent_samples.setdefault(row["intent_id"], []).append(row["template"])
+        for slot in slots:
             bucket = entity_samples.setdefault(slot["name"], [])
             for ex in slot.get("examples") or []:
                 if ex and ex not in bucket:
@@ -108,6 +159,7 @@ def load_intents_for_eval(lang: str = "en-US") -> Dict[str, Any]:
     return {
         "lang": lang,
         "intent_samples": intent_samples,
+        "template_samples": template_samples,
         "entity_samples": entity_samples,
         "keywords": kw,
         "test": test_rows,

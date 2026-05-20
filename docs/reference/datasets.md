@@ -44,6 +44,37 @@ X, y = load_hf("benayas/snips", split="train")
 
 Lazy-imports `datasets`; raises `ImportError("install jurebes[hf] ...")` if missing.
 
+## Bracket-expansion helpers
+
+For Padatious-style template grammars with `(alt|ernation)`, `[optional]` and `{slot}` placeholders.
+
+### `expand_template(template) -> list[str]`
+
+Expand alternations and optionals into the full set of realised strings.
+
+```python
+from jurebes.datasets import expand_template
+
+expand_template("(hello|hi) [there] friend")
+# ["hello friend", "hello there friend", "hi friend", "hi there friend"]
+```
+
+### `expand_slots(template, slots) -> list[str]`
+
+Same as above, then substitute `{slot}` placeholders with values drawn from a dict (cartesian product across placeholders). Unknown slot names are left intact.
+
+```python
+from jurebes.datasets import expand_slots
+
+expand_slots("play {song} by {artist}",
+             {"song": ["africa", "hey jude"],
+              "artist": ["toto", "the beatles"]})
+# ["play africa by toto", "play africa by the beatles",
+#  "play hey jude by toto", "play hey jude by the beatles"]
+```
+
+Pure stdlib (`re` + `itertools`); no `ovos-utils` runtime dep.
+
 ## Canonical benchmark loaders
 
 Module `jurebes.datasets.canonical`. Each loader fetches from HuggingFace and caches under `~/.cache/huggingface/`. All require the `hf` extra.

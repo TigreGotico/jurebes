@@ -1,7 +1,7 @@
 # intents-for-eval (eu-ES) training report
 
 - intents: **50**
-- templates: **1000**
+- templates: **1000** → **2188** after slot expansion
 - entities: **24**
 - test utterances: **1700** in-domain (+50 OOD rows excluded)
 
@@ -11,15 +11,15 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 
 | baseline | accuracy | macro_f1 |
 |---|---|---|
-| nb_multinomial | 0.6976 | 0.7084 |
-| logreg | 0.6653 | 0.6736 |
-| voting_soft | 0.6447 | 0.6407 |
-| linear_svc | 0.6276 | 0.6215 |
-| ovr_linear_svc | 0.6276 | 0.6215 |
-| logreg_char | 0.6206 | 0.5941 |
-| linear_svc_char | 0.6135 | 0.5890 |
+| linear_svc_char | 0.8382 | 0.8392 |
+| logreg_char | 0.8235 | 0.8241 |
+| voting_soft | 0.7794 | 0.7852 |
+| linear_svc | 0.7753 | 0.7820 |
+| ovr_linear_svc | 0.7753 | 0.7820 |
+| logreg | 0.7518 | 0.7560 |
+| nb_multinomial | 0.6565 | 0.6390 |
 
-**winning baseline (intent):** `nb_multinomial`
+**winning baseline (intent):** `linear_svc_char`
 
 ## Slot extraction
 
@@ -36,16 +36,16 @@ Train each tagger on the same templates + entity gazetteer; evaluate against the
 
 ## Per-domain intent accuracy
 
-Using the winning baseline `nb_multinomial`.
+Using the winning baseline `linear_svc_char`.
 | domain | n | accuracy |
 |---|---|---|
-| calendar | 174 | 0.6034 |
-| communication | 168 | 0.7679 |
-| media | 172 | 0.7965 |
-| navigation | 170 | 0.7294 |
-| news | 170 | 0.6059 |
-| search_qa | 180 | 0.6111 |
-| smarthome | 168 | 0.6964 |
-| system_control | 162 | 0.7716 |
-| timers_alarms | 168 | 0.7440 |
-| weather | 168 | 0.6607 |
+| calendar | 174 | 0.7586 |
+| communication | 168 | 0.8810 |
+| media | 172 | 0.8372 |
+| navigation | 170 | 0.8706 |
+| news | 170 | 0.7941 |
+| search_qa | 180 | 0.8944 |
+| smarthome | 168 | 0.8631 |
+| system_control | 162 | 0.8395 |
+| timers_alarms | 168 | 0.8214 |
+| weather | 168 | 0.8214 |

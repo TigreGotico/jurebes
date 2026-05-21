@@ -68,11 +68,14 @@ def run(lang: str = "en-US") -> str:
     test_utts = [r["utterance"] for r in test]
     test_gold = [r["expected_intent"] for r in test]
 
+    # Linear / NB / ensemble baselines only — these fit in seconds even on
+    # the ~13.8k-template-per-language MASSIVE corpus. The MLP-heavy
+    # autoencoder and label-guided baselines are characterised on the
+    # canonical datasets and intents-for-eval; running them on 51 more
+    # languages adds hours of compute without adding insight.
     portfolio = [
         "nb_multinomial", "logreg", "linear_svc", "linear_svc_char",
         "logreg_char", "ovr_linear_svc", "voting_soft",
-        "autoencoder_logreg", "denoising_autoencoder_logreg",
-        "label_guided_logreg", "label_guided_linear_svc",
     ]
     rows = []
     for name in portfolio:

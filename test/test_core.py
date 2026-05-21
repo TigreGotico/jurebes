@@ -163,3 +163,24 @@ def test_fit_requires_two_classes():
     clf.add_intent("hello", ["hi", "hello"])
     with pytest.raises(ValueError):
         clf.fit()
+
+
+# ── generic-text-classification aliases ─────────────────────────────
+
+
+def test_text_classifier_alias_is_intent_classifier():
+    from jurebes import TextClassifier, TextResult
+    assert TextClassifier is IntentClassifier
+    from jurebes.core import IntentResult
+    assert TextResult is IntentResult
+
+
+def test_add_class_aliases_add_intent():
+    clf = IntentClassifier(BASELINES.build("logreg"))
+    clf.add_class("spam", ["win money now", "free prize click", "cheap meds"])
+    clf.add_class("ham", ["meeting at noon", "see you tomorrow", "lunch plans"])
+    clf.fit()
+    r = clf.predict("free prize")
+    assert r.label == r.intent
+    assert r.text == r.utterance
+    assert r.label in {"spam", "ham"}

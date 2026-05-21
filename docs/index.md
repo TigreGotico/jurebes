@@ -2,7 +2,9 @@
 
 **J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
-A classical-ML intent classification research framework.
+A classical-ML text classification research framework. Intent
+classification is the flagship application; the core works for any
+single-label text task (spam, sentiment, topic, language-ID).
 
 > *Named in memory of Jurebes, the best dog.*
 
@@ -26,6 +28,7 @@ A classical-ML intent classification research framework.
 - [Debugging bad predictions](guides/debugging-bad-predictions.md)
 - [LLM-driven data augmentation](guides/active-learning-llm-augmentation.md)
 - [Semi-supervised learning](guides/semi-supervised-learning.md)
+- [General text classification](guides/general-text-classification.md)
 
 ## Theory
 

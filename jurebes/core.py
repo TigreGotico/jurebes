@@ -44,6 +44,16 @@ class IntentResult:
     entities: Dict[str, str] = field(default_factory=dict)
     utterance: str = ""
 
+    @property
+    def label(self) -> Optional[str]:
+        """Generic-text-classification alias for :attr:`intent`."""
+        return self.intent
+
+    @property
+    def text(self) -> str:
+        """Generic-text-classification alias for :attr:`utterance`."""
+        return self.utterance
+
 
 def _has_proba(estimator) -> bool:
     final = estimator
@@ -112,6 +122,13 @@ class IntentClassifier:
     def add_intent(self, name: str, samples: List[str]) -> None:
         with self._lock:
             self._samples.setdefault(name, []).extend(_expand_samples(samples))
+
+    # Generic-text-classification alias. Intent classification is one
+    # application of text classification; ``add_class`` reads naturally for
+    # spam / sentiment / topic and other non-intent tasks.
+    def add_class(self, name: str, samples: List[str]) -> None:
+        """Alias of :meth:`add_intent` for general text-classification use."""
+        self.add_intent(name, samples)
 
     def add_entity(self, name: str, samples: List[str]) -> None:
         if self.tagger is None:
@@ -241,3 +258,11 @@ class IntentClassifier:
         inst._lock = RLock()
         inst._loaded_from_version = blob.get("_jurebes_version")
         return inst
+
+
+# ── Generic-text-classification alias ──────────────────────────────
+# Intent classification is one application of text classification; the
+# IntentClassifier core is domain-agnostic. TextClassifier is the same
+# class under a name that reads naturally for non-intent tasks.
+TextClassifier = IntentClassifier
+TextResult = IntentResult

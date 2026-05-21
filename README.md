@@ -2,9 +2,11 @@
 
 **J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
-A classical-ML intent classification research framework — pure scikit-learn, no NLTK, no padacioso.
+A classical-ML text classification research framework — pure scikit-learn, no NLTK, no padacioso.
 
-Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind a small intent-classification API, plus a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
+Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind a small text-classification API, plus a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
+
+Intent classification is the flagship application — but the core is domain-agnostic. Spam, sentiment, topic, language-ID and any other single-label text task run on the same API; see [the general text classification guide](docs/guides/general-text-classification.md).
 
 > *Named in memory of Jurebes, the best dog.*
 

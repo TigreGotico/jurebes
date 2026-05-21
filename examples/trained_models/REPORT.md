@@ -72,24 +72,30 @@ Three patterns generalise across the canonical datasets:
   under a second on every dataset and lands within 5–10 accuracy points
   of the linear-SVM winners. For latency-sensitive applications it is
   the right baseline to deploy.
-- **Vanilla autoencoders underperform on high-class-count data.**
-  The default unsupervised reconstruction objective is misaligned with
-  classification — the MSE-minimising bottleneck preserves whatever
-  carries reconstruction error, not whatever discriminates classes.
-  On 7-class SNIPS `autoencoder_logreg` lands at 0.94 (5 points off
-  the linear leader); on 77-class BANKING77 and 150-class CLINC-150 it
-  collapses to 0.27 / 0.24. Mitigations now in the framework:
-  - `hidden_layer_sizes="auto"` (default) scales the bottleneck from
-    the TF-IDF vocab size at fit time.
-  - `autoencoder_logreg_wide` and `autoencoder_logreg_deep` baselines
-    use wider / deeper bottlenecks for high-class problems.
-  - `denoising_autoencoder_logreg` adds input noise for robust features.
-  - **`label_guided_logreg` / `label_guided_linear_svc`** (ported from
-    `TigreGotico/guided-categorical-embeddings-sklearn`, Apache-2.0)
-    use `MLPClassifier` trained end-to-end on `(X, y)` and extract
-    hidden activations — the supervised-bottleneck fix that
-    classification-aware embeddings are supposed to achieve. The next
-    benchmark run will measure whether they recover the gap.
+- **Autoencoders underperform on high-class-count data.** An
+  autoencoder (`SklearnAutoencoder`: encoder + decoder, reconstruction
+  loss, `y = X`, unsupervised) compresses whatever carries
+  reconstruction error — not whatever discriminates classes. On
+  7-class SNIPS `autoencoder_logreg` lands at 0.97; on 77-class
+  BANKING77 it falls to 0.56 with the auto-sized bottleneck (it was
+  0.27 with the old fixed `(64,16,64)`). `autoencoder_logreg_wide`
+  reaches 0.71. `denoising_autoencoder_logreg` is *worse* — 0.19 on
+  BANKING77 — because Gaussian noise on sparse TF-IDF destroys signal
+  rather than regularising it; denoising autoencoders suit dense
+  continuous inputs, not bag-of-words.
+
+- **Label-guided embeddings are not autoencoders, and they win the
+  reduced-dim group.** `label_guided_logreg` / `label_guided_linear_svc`
+  (ported from `TigreGotico/guided-categorical-embeddings-sklearn`,
+  Apache-2.0) train an `MLPClassifier` end-to-end on `(X, y)` and tap a
+  hidden layer — **supervised bottleneck features**, no decoder and no
+  reconstruction objective. They are a distinct method family that
+  happens to be a `reduced_dim` featurizer. On BANKING77 they reach
+  ~0.85 (vs the autoencoder's 0.56) — within 3-4 points of the
+  `linear_svc_char` leader, and on SNIPS effectively tied (0.982 vs
+  0.986). The lesson is not "fix the autoencoder" but "for intent
+  classification, supervise the bottleneck — that is a classifier
+  feature extractor, not an autoencoder."
 
 ### Latency vs accuracy
 

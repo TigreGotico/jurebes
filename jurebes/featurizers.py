@@ -182,11 +182,13 @@ def _ae_activation(name: str):
 
 
 def _auto_sizes(n_features: int) -> tuple:
-    """Heuristic autoencoder layer sizes given the input dimension.
+    """Heuristic MLP layer sizes given the input dimension.
 
     Returns a symmetric ``(wide, narrow, wide)`` triple where the bottleneck
     scales with ``sqrt(n_features)`` so the latent capacity adapts to the
-    actual TF-IDF vocab size of the corpus.
+    actual TF-IDF vocab size of the corpus. Shared by ``SklearnAutoencoder``
+    (reconstruction bottleneck) and ``LabelGuidedEmbeddingsTransformer``
+    (supervised classifier bottleneck).
     """
     wide = max(64, int(2 * np.sqrt(n_features)))
     bottleneck = max(32, int(np.sqrt(n_features)))

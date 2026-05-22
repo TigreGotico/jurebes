@@ -21,7 +21,7 @@ from jurebes.featurizers import (
     text_stats,
     tfidf_word,
     tfidf_word_sublinear,
-    _skipgram_analyzer,
+    _SkipgramAnalyzer,
 )
 
 
@@ -220,19 +220,19 @@ def test_feature_union_combines():
 # ── skip-grams ─────────────────────────────────────────────────────────────
 
 def test_skipgram_analyzer_emits_expected():
-    a = _skipgram_analyzer(n=2, k=1)
+    a = _SkipgramAnalyzer(n=2, k=1)
     # "a b c d": pairs whose member gap is at most k+1 positions apart
     grams = a("a b c d")
     assert grams == ["a b", "a c", "b c", "b d", "c d"]
 
 
 def test_skipgram_analyzer_k0_is_contiguous_bigrams():
-    a = _skipgram_analyzer(n=2, k=0)
+    a = _SkipgramAnalyzer(n=2, k=0)
     assert a("one two three") == ["one two", "two three"]
 
 
 def test_skipgram_analyzer_lowercases():
-    a = _skipgram_analyzer(n=2, k=2)
+    a = _SkipgramAnalyzer(n=2, k=2)
     assert all(g == g.lower() for g in a("Hello WORLD"))
 
 
@@ -244,6 +244,19 @@ def test_skipgram_word_fits():
 
 
 # ── BM25 ───────────────────────────────────────────────────────────────────
+
+
+def test_skipgram_word_pickles():
+    """A fitted skipgram vectorizer must joblib-round-trip (closure-free)."""
+    import io, joblib
+    v = skipgram_word(n=2, k=2)
+    v.fit(["play africa now", "set a timer", "what is the weather"])
+    buf = io.BytesIO()
+    joblib.dump(v, buf)
+    buf.seek(0)
+    v2 = joblib.load(buf)
+    assert v2.transform(["play the song"]).shape[1] == len(v.vocabulary_)
+
 
 def test_bm25_output_non_negative():
     p = bm25_word()

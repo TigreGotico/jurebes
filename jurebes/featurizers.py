@@ -92,38 +92,40 @@ def feature_union(*builders):
 _TOKEN_RE = re.compile(r"\w+")
 
 
-def _skipgram_analyzer(n: int = 2, k: int = 2):
-    """Return an analyzer callable that emits ``n``-token skip-grams.
+class _SkipgramAnalyzer:
+    """Picklable analyzer that emits ``n``-token skip-grams.
 
     Each skip-gram is an ``n``-tuple of tokens drawn from the document with up
-    to ``k`` token positions skipped between any two consecutive members. The
-    returned callable accepts a raw document string — the signature
-    `TfidfVectorizer(analyzer=...)` expects — lowercases it, tokenises on
-    ``\\w+`` and yields space-joined skip-grams (Guthrie et al. 2006).
+    to ``k`` token positions skipped between any two consecutive members. An
+    instance is the callable `TfidfVectorizer(analyzer=...)` expects; being a
+    module-level class with int attributes it pickles cleanly, so a fitted
+    vectorizer round-trips through joblib (Guthrie et al. 2006).
     """
-    if n < 1:
-        raise ValueError("n must be >= 1")
-    if k < 0:
-        raise ValueError("k must be >= 0")
 
-    def analyzer(doc: str) -> List[str]:
+    def __init__(self, n: int = 2, k: int = 2):
+        if n < 1:
+            raise ValueError("n must be >= 1")
+        if k < 0:
+            raise ValueError("k must be >= 0")
+        self.n = n
+        self.k = k
+
+    def __call__(self, doc: str) -> List[str]:
         tokens = _TOKEN_RE.findall(str(doc).lower())
         m = len(tokens)
-        if n == 1:
+        if self.n == 1:
             return list(tokens)
         out: List[str] = []
-        for idx in itertools.combinations(range(m), n):
+        for idx in itertools.combinations(range(m), self.n):
             # consecutive members may skip at most k positions
-            if all(idx[i + 1] - idx[i] - 1 <= k for i in range(n - 1)):
+            if all(idx[i + 1] - idx[i] - 1 <= self.k for i in range(self.n - 1)):
                 out.append(" ".join(tokens[i] for i in idx))
         return out
-
-    return analyzer
 
 
 def skipgram_word(n=2, k=2, min_df=1, max_df=1.0):
     """TF-IDF over ``n``-token skip-grams with up to ``k`` skipped positions."""
-    return TfidfVectorizer(analyzer=_skipgram_analyzer(n, k),
+    return TfidfVectorizer(analyzer=_SkipgramAnalyzer(n, k),
                            min_df=min_df, max_df=max_df)
 
 

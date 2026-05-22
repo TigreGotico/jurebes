@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
 import warnings
@@ -13,6 +14,7 @@ from collections import Counter
 from typing import Dict, List, Optional
 
 import numpy as np
+import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import NMF, LatentDirichletAllocation, TruncatedSVD
 from sklearn.feature_extraction.text import (
@@ -21,6 +23,7 @@ from sklearn.feature_extraction.text import (
     TfidfVectorizer,
 )
 from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.random_projection import SparseRandomProjection
 
 
 def tfidf_word(min_df=1, max_df=1.0, ngram_range=(1, 1)):
@@ -82,6 +85,103 @@ def lda_topics(n_topics: int = 20, base=None):
 def feature_union(*builders):
     """Combine multiple featurizer builders into a single FeatureUnion."""
     return FeatureUnion([(f"f{i}", b) for i, b in enumerate(builders)])
+
+
+# ── skip-grams ─────────────────────────────────────────────────────────────
+
+_TOKEN_RE = re.compile(r"\w+")
+
+
+def _skipgram_analyzer(n: int = 2, k: int = 2):
+    """Return an analyzer callable that emits ``n``-token skip-grams.
+
+    Each skip-gram is an ``n``-tuple of tokens drawn from the document with up
+    to ``k`` token positions skipped between any two consecutive members. The
+    returned callable accepts a raw document string — the signature
+    `TfidfVectorizer(analyzer=...)` expects — lowercases it, tokenises on
+    ``\\w+`` and yields space-joined skip-grams (Guthrie et al. 2006).
+    """
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    if k < 0:
+        raise ValueError("k must be >= 0")
+
+    def analyzer(doc: str) -> List[str]:
+        tokens = _TOKEN_RE.findall(str(doc).lower())
+        m = len(tokens)
+        if n == 1:
+            return list(tokens)
+        out: List[str] = []
+        for idx in itertools.combinations(range(m), n):
+            # consecutive members may skip at most k positions
+            if all(idx[i + 1] - idx[i] - 1 <= k for i in range(n - 1)):
+                out.append(" ".join(tokens[i] for i in idx))
+        return out
+
+    return analyzer
+
+
+def skipgram_word(n=2, k=2, min_df=1, max_df=1.0):
+    """TF-IDF over ``n``-token skip-grams with up to ``k`` skipped positions."""
+    return TfidfVectorizer(analyzer=_skipgram_analyzer(n, k),
+                           min_df=min_df, max_df=max_df)
+
+
+# ── BM25 ───────────────────────────────────────────────────────────────────
+
+class BM25Transformer(BaseEstimator, TransformerMixin):
+    """Okapi BM25 term-weighting transformer over a count matrix.
+
+    Sits after a `CountVectorizer`. ``fit`` records per-term document
+    frequencies, the average document length and the BM25 idf vector;
+    ``transform`` applies the Okapi saturation formula
+
+        ``idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * dl / avgdl))``
+
+    over a sparse count matrix (Robertson & Zaragoza 2009). Implemented with
+    pure numpy and scipy.sparse so a fitted instance is picklable.
+    """
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75):
+        self.k1 = k1
+        self.b = b
+
+    def fit(self, X, y=None):
+        X = sp.csr_matrix(X)
+        n_docs = X.shape[0]
+        # document frequency: number of docs each term appears in
+        df = np.bincount(X.indices, minlength=X.shape[1]) if n_docs else np.zeros(X.shape[1])
+        # for non-binary count matrices, recompute df from the binarised pattern
+        binary = X.copy()
+        binary.data = np.ones_like(binary.data)
+        df = np.asarray(binary.sum(axis=0)).ravel()
+        # BM25 idf with the +1 smoothing that keeps weights non-negative
+        self.idf_ = np.log(1.0 + (n_docs - df + 0.5) / (df + 0.5))
+        doc_len = np.asarray(X.sum(axis=1)).ravel()
+        self.avgdl_ = float(doc_len.mean()) if n_docs else 0.0
+        self.n_features_in_ = X.shape[1]
+        return self
+
+    def transform(self, X):
+        X = sp.csr_matrix(X, dtype=np.float64)
+        doc_len = np.asarray(X.sum(axis=1)).ravel()
+        avgdl = self.avgdl_ if self.avgdl_ > 0 else 1.0
+        # per-row denominator component k1 * (1 - b + b * dl / avgdl)
+        denom_norm = self.k1 * (1.0 - self.b + self.b * doc_len / avgdl)
+        out = X.tocoo(copy=True)
+        tf = out.data
+        norm = denom_norm[out.row]
+        weighted = tf * (self.k1 + 1.0) / (tf + norm)
+        out.data = weighted * self.idf_[out.col]
+        return out.tocsr()
+
+
+def bm25_word(ngram_range=(1, 1), min_df=1, k1=1.5, b=0.75):
+    """Okapi BM25 term weighting over a `CountVectorizer` base."""
+    return Pipeline([
+        ("count", CountVectorizer(ngram_range=ngram_range, min_df=min_df)),
+        ("bm25", BM25Transformer(k1=k1, b=b)),
+    ])
 
 
 # ── text_stats ─────────────────────────────────────────────────────────────

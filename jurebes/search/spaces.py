@@ -119,6 +119,20 @@ _SPACES: Dict[str, Dict[str, Any]] = {
     "text_stats_logreg":       {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0]},
     "union_logreg":            {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0]},
     "union_text_stats_logreg": {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0]},
+
+    # ── skip-grams / BM25 / random projection ──────────────────────
+    "skipgram_logreg": {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0, 8.0]},
+    "bm25_logreg": {
+        "clf__C": [0.1, 0.5, 1.0, 2.0, 4.0, 8.0],
+        "feat__bm25__k1": [0.8, 1.2, 1.5, 2.0],
+        "feat__bm25__b": [0.5, 0.75, 1.0],
+    },
+    "bm25_linear_svc": {
+        "clf__estimator__C": [0.1, 0.5, 1.0, 2.0, 4.0],
+        "feat__bm25__k1": [0.8, 1.2, 1.5, 2.0],
+        "feat__bm25__b": [0.5, 0.75, 1.0],
+    },
+    "random_projection_logreg": {"clf__C": [0.1, 0.5, 1.0, 2.0, 4.0]},
 }
 
 

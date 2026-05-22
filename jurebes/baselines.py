@@ -36,6 +36,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from jurebes.featurizers import (
     autoencoder,
+    bm25_word,
     categorical,
     char_word_union,
     count_word,
@@ -44,16 +45,37 @@ from jurebes.featurizers import (
     hashing_word,
     label_guided,
     lda_topics,
+    lemmatized_tfidf,
     lsa,
     nmf,
+    pos_sequence,
+    random_projection,
+    skipgram_word,
+    stemmed_tfidf,
     text_stats,
     tfidf_char,
     tfidf_word,
+    word_pos,
 )
 
 
 def _cal(est):
     return CalibratedClassifierCV(est, cv=3)
+
+
+def _require(module: str, extra: str) -> None:
+    """Probe an optional dependency so a missing extra surfaces at ``build()``.
+
+    The linguistic baselines wrap optional-dependency featurizers; importing
+    the module here means ``BASELINES.build(name)`` raises a clear
+    ``ImportError`` naming the extra rather than deferring the failure to
+    ``fit`` time.
+    """
+    import importlib
+    try:
+        importlib.import_module(module)
+    except ImportError as exc:
+        raise ImportError(f"install jurebes[{extra}] to use this baseline") from exc
 
 
 def _p(feat, clf):
@@ -199,6 +221,26 @@ BASELINE_SPECS: Dict[str, Callable[[], Pipeline]] = {
     # ── categorical (dict-of-string input, not text) ───────────────
     "categorical_logreg": lambda: _p(categorical(), LogisticRegression(max_iter=1000)),
     "categorical_random_forest": lambda: _p(categorical(), RandomForestClassifier()),
+    # ── skip-grams / BM25 / random projection ──────────────────────
+    "skipgram_logreg": lambda: _p(skipgram_word(), LogisticRegression(max_iter=1000)),
+    "bm25_logreg": lambda: _p(bm25_word(), LogisticRegression(max_iter=1000)),
+    "bm25_linear_svc": lambda: _p(bm25_word(), _cal(LinearSVC())),
+    "random_projection_logreg": lambda: _p(
+        random_projection(base=tfidf_word()), LogisticRegression(max_iter=1000),
+    ),
+    # ── linguistic (optional-dependency featurizers) ───────────────
+    "pos_sequence_logreg": lambda: (
+        _require("brill_postaggers", "postag"),
+        _p(pos_sequence("en"), LogisticRegression(max_iter=1000)))[1],
+    "word_pos_logreg": lambda: (
+        _require("brill_postaggers", "postag"),
+        _p(word_pos("en"), LogisticRegression(max_iter=1000)))[1],
+    "stemmed_logreg": lambda: (
+        _require("nltk", "stem"),
+        _p(stemmed_tfidf("en"), LogisticRegression(max_iter=1000)))[1],
+    "lemmatized_logreg": lambda: (
+        _require("simplemma", "lemma"),
+        _p(lemmatized_tfidf("en"), LogisticRegression(max_iter=1000)))[1],
 }
 
 
@@ -230,6 +272,10 @@ _GROUPS: Dict[str, Set[str]] = {
     "feature_engineering": {"text_stats_logreg", "union_text_stats_logreg"},
     "discriminant": {"lda_classifier", "qda_classifier"},
     "categorical": {"categorical_logreg", "categorical_random_forest"},
+    "linguistic": {
+        "pos_sequence_logreg", "word_pos_logreg",
+        "stemmed_logreg", "lemmatized_logreg",
+    },
 }
 _GROUPS["reduced_dim"].update({
     "autoencoder_logreg", "autoencoder_linear_svc", "autoencoder_rbf_svc",
@@ -239,6 +285,8 @@ _GROUPS["reduced_dim"].update({
 })
 _GROUPS["naive_bayes"].add("complement_nb_count")
 _GROUPS["linear"].update({"hashing_sgd_log", "hashing_sgd_hinge"})
+_GROUPS["linear"].update({"skipgram_logreg", "bm25_logreg", "bm25_linear_svc"})
+_GROUPS["reduced_dim"].add("random_projection_logreg")
 
 
 class _Registry:

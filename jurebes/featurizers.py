@@ -184,6 +184,23 @@ def bm25_word(ngram_range=(1, 1), min_df=1, k1=1.5, b=0.75):
     ])
 
 
+# ── random projection ──────────────────────────────────────────────────────
+
+def random_projection(n_components=200, base=None, seed=0):
+    """Reduced-dim featurizer via `SparseRandomProjection`.
+
+    The Johnson-Lindenstrauss lemma guarantees a sparse random projection
+    preserves pairwise distances within a bounded distortion; `SparseRandomProjection`
+    accepts sparse input directly, so no densification is needed. When ``base``
+    is given the projection runs on the base featurizer's output, otherwise it
+    projects the input matrix as supplied.
+    """
+    rp = SparseRandomProjection(n_components=n_components, random_state=seed)
+    if base is None:
+        return Pipeline([("rp", rp)])
+    return Pipeline([("base", base), ("rp", rp)])
+
+
 # ── text_stats ─────────────────────────────────────────────────────────────
 
 _PUNCT_RE = re.compile(r"[^\w\s]")

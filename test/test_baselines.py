@@ -46,11 +46,31 @@ _WEAK = {
     "autoencoder_logreg_wide", "autoencoder_logreg_deep",
     "denoising_autoencoder_logreg",
     "label_guided_logreg", "label_guided_linear_svc",
+    # POS sequences drop all lexical content, so pure syntactic features carry
+    # little discriminative signal on short, lexically distinct toy utterances.
+    "pos_sequence_logreg",
 }
 
 # Baselines whose input is dict-of-strings rather than text; the text-fit
 # parametrize cannot exercise them.
 _SKIP_TEXT_FIT = {"categorical_logreg", "categorical_random_forest"}
+
+
+def _missing(module: str) -> bool:
+    import importlib.util
+    return importlib.util.find_spec(module) is None
+
+
+# Linguistic baselines depend on optional extras (brill_postagger / nltk /
+# simplemma). When an extra is absent the parametrized text-fit test skips
+# the affected baseline; with the extras installed it fits the toy fixture.
+_SKIP_LINGUISTIC = set()
+if _missing("brill_postaggers"):
+    _SKIP_LINGUISTIC |= {"pos_sequence_logreg", "word_pos_logreg"}
+if _missing("nltk"):
+    _SKIP_LINGUISTIC |= {"stemmed_logreg"}
+if _missing("simplemma"):
+    _SKIP_LINGUISTIC |= {"lemmatized_logreg"}
 
 # Wide/deep autoencoder variants are slow to fit even on the toy fixture and
 # trigger pytest-timeout. They are exercised by the canonical-benchmark
@@ -64,6 +84,8 @@ def test_baseline_fits_and_scores(name):
         pytest.skip(f"{name} consumes dict-of-string features, not raw text")
     if name in _SKIP_SLOW:
         pytest.skip(f"{name} is too slow for the toy fixture; tested via training scripts")
+    if name in _SKIP_LINGUISTIC:
+        pytest.skip(f"{name} requires an optional linguistic extra that is not installed")
     est = BASELINES.build(name)
     est.fit(_X, _y)
     preds = est.predict(_X)
@@ -101,7 +123,7 @@ def test_registry_resolve_selector():
 
 
 def test_resolve_all_returns_full_registry():
-    assert len(BASELINES.resolve("@all")) == 53
+    assert len(BASELINES.resolve("@all")) == 61
     assert len(BASELINES.resolve("@all")) == len(list(BASELINES.names()))
 
 

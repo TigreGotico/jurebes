@@ -5,18 +5,23 @@ from __future__ import annotations
 import numpy as np
 
 from jurebes.featurizers import (
+    BM25Transformer,
     CategoricalVectorizer,
     SklearnAutoencoder,
     autoencoder,
+    bm25_word,
     categorical,
     feature_union,
     hashing_char,
     lda_topics,
     lsa,
     nmf,
+    random_projection,
+    skipgram_word,
     text_stats,
     tfidf_word,
     tfidf_word_sublinear,
+    _skipgram_analyzer,
 )
 
 
@@ -210,3 +215,81 @@ def test_feature_union_combines():
     assert X.shape[0] == 3
     # union width = vocab size + 7
     assert X.shape[1] > 7
+
+
+# ── skip-grams ─────────────────────────────────────────────────────────────
+
+def test_skipgram_analyzer_emits_expected():
+    a = _skipgram_analyzer(n=2, k=1)
+    # "a b c d": pairs whose member gap is at most k+1 positions apart
+    grams = a("a b c d")
+    assert grams == ["a b", "a c", "b c", "b d", "c d"]
+
+
+def test_skipgram_analyzer_k0_is_contiguous_bigrams():
+    a = _skipgram_analyzer(n=2, k=0)
+    assert a("one two three") == ["one two", "two three"]
+
+
+def test_skipgram_analyzer_lowercases():
+    a = _skipgram_analyzer(n=2, k=2)
+    assert all(g == g.lower() for g in a("Hello WORLD"))
+
+
+def test_skipgram_word_fits():
+    v = skipgram_word(n=2, k=2)
+    X = v.fit_transform(_DOCS)
+    assert X.shape[0] == len(_DOCS)
+    assert X.shape[1] > 0
+
+
+# ── BM25 ───────────────────────────────────────────────────────────────────
+
+def test_bm25_output_non_negative():
+    p = bm25_word()
+    X = p.fit_transform(_DOCS)
+    assert X.shape[0] == len(_DOCS)
+    assert X.min() >= 0.0
+
+
+def test_bm25_rank_orders_toy_corpus():
+    # a rare term must outscore a ubiquitous one in the document containing both
+    corpus = ["common common common rare", "common", "common", "common"]
+    p = bm25_word()
+    X = p.fit_transform(corpus).toarray()
+    vocab = p.named_steps["count"].vocabulary_
+    rare_w = X[0, vocab["rare"]]
+    common_w = X[0, vocab["common"]]
+    assert rare_w > common_w > 0.0
+
+
+def test_bm25_pipeline_round_trips_via_joblib(tmp_path):
+    import joblib
+    p = bm25_word()
+    p.fit(_DOCS)
+    path = tmp_path / "bm25.joblib"
+    joblib.dump(p, path)
+    p2 = joblib.load(path)
+    np.testing.assert_allclose(
+        p.transform(_DOCS).toarray(), p2.transform(_DOCS).toarray())
+
+
+def test_bm25_transformer_params():
+    t = BM25Transformer(k1=2.0, b=0.5)
+    assert t.k1 == 2.0 and t.b == 0.5
+
+
+# ── random projection ──────────────────────────────────────────────────────
+
+def test_random_projection_yields_requested_components():
+    docs = _DOCS * 4
+    p = random_projection(n_components=6, base=tfidf_word())
+    X = p.fit_transform(docs)
+    assert X.shape == (len(docs), 6)
+
+
+def test_random_projection_seeded_is_deterministic():
+    docs = _DOCS * 4
+    X1 = random_projection(n_components=6, base=tfidf_word(), seed=1).fit_transform(docs)
+    X2 = random_projection(n_components=6, base=tfidf_word(), seed=1).fit_transform(docs)
+    assert (X1 != X2).nnz == 0 if hasattr(X1, "nnz") else np.array_equal(X1, X2)

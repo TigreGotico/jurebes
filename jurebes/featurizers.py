@@ -201,6 +201,95 @@ def random_projection(n_components=200, base=None, seed=0):
     return Pipeline([("base", base), ("rp", rp)])
 
 
+# ── linguistic featurizers ─────────────────────────────────────────────────
+# Each transformer maps list[str] -> list[str]; the optional dependency is
+# lazily imported inside ``fit`` with a clear install hint, and the loaded
+# model is cached on the instance so it is built once per pipeline, not once
+# per utterance.
+
+# brill_postagger ships pretrained models for these languages.
+_BRILL_LANGS = {"ca", "da", "de", "en", "es", "eu", "fr", "gl", "it", "nl", "pt"}
+
+# Snowball stemmer language-code → language-name mapping.
+_SNOWBALL_LANGS = {
+    "ar": "arabic", "da": "danish", "nl": "dutch", "en": "english",
+    "fi": "finnish", "fr": "french", "de": "german", "hu": "hungarian",
+    "it": "italian", "no": "norwegian", "pt": "portuguese", "ro": "romanian",
+    "ru": "russian", "es": "spanish", "sv": "swedish",
+}
+
+
+class PosSequenceTransformer(BaseEstimator, TransformerMixin):
+    """Map each utterance to its part-of-speech tag sequence.
+
+    ``"como está"`` becomes ``"SCONJ VERB"`` — the lexical content is dropped,
+    leaving a purely syntactic representation. POS tags come from
+    `brill_postagger`, which ships pretrained models for 11 languages
+    (ca/da/de/en/es/eu/fr/gl/it/nl/pt).
+    """
+
+    def __init__(self, lang: str = "en"):
+        self.lang = lang
+
+    def fit(self, X, y=None):
+        if self.lang not in _BRILL_LANGS:
+            raise ValueError(
+                f"unsupported language {self.lang!r}; brill_postagger covers "
+                f"{sorted(_BRILL_LANGS)}")
+        try:
+            from brill_postaggers import BrillPostagger
+        except ImportError as exc:
+            raise ImportError(
+                "install jurebes[postag] to use POS-tag featurizers") from exc
+        self.tagger_ = BrillPostagger.from_pretrained(self.lang)
+        return self
+
+    def transform(self, X):
+        return [" ".join(pos for _, pos in self.tagger_.tag(str(s)))
+                for s in X]
+
+
+class WordPosTransformer(BaseEstimator, TransformerMixin):
+    """Map each utterance to hybrid ``token__POS`` tokens.
+
+    ``"esta"`` tagged ``VERB`` becomes ``"esta__VERB"``. The double underscore
+    survives sklearn's default ``\\w+`` token pattern, so a downstream
+    `TfidfVectorizer` keeps lexical and grammatical signal in one channel.
+    """
+
+    def __init__(self, lang: str = "en"):
+        self.lang = lang
+
+    def fit(self, X, y=None):
+        if self.lang not in _BRILL_LANGS:
+            raise ValueError(
+                f"unsupported language {self.lang!r}; brill_postagger covers "
+                f"{sorted(_BRILL_LANGS)}")
+        try:
+            from brill_postaggers import BrillPostagger
+        except ImportError as exc:
+            raise ImportError(
+                "install jurebes[postag] to use POS-tag featurizers") from exc
+        self.tagger_ = BrillPostagger.from_pretrained(self.lang)
+        return self
+
+    def transform(self, X):
+        return [" ".join(f"{tok}__{pos}" for tok, pos in self.tagger_.tag(str(s)))
+                for s in X]
+
+
+def pos_sequence(lang="en", **tfidf_kw):
+    """TF-IDF over POS-tag sequences (`brill_postagger`, ``[postag]`` extra)."""
+    return Pipeline([("pos", PosSequenceTransformer(lang)),
+                     ("tfidf", TfidfVectorizer(**tfidf_kw))])
+
+
+def word_pos(lang="en", **tfidf_kw):
+    """TF-IDF over hybrid ``token__POS`` tokens (`brill_postagger`, ``[postag]``)."""
+    return Pipeline([("wp", WordPosTransformer(lang)),
+                     ("tfidf", TfidfVectorizer(**tfidf_kw))])
+
+
 # ── text_stats ─────────────────────────────────────────────────────────────
 
 _PUNCT_RE = re.compile(r"[^\w\s]")

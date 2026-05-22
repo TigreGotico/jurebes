@@ -76,6 +76,40 @@ Neural-bottleneck autoencoder built on top of an optional base featurizer. Retur
 
 `**kwargs` flow to `SklearnAutoencoder`'s constructor.
 
+### `random_projection(n_components=200, base=None, seed=0)`
+
+`SparseRandomProjection` reduced-dim featurizer. Projects the input (or `base` featurizer output) onto a `n_components`-dimensional random subspace; accepts sparse input directly. Returns `Pipeline([("base", base), ("rp", rp)])` or `Pipeline([("rp", rp)])` when `base` is `None`.
+
+## Skip-grams and BM25
+
+### `skipgram_word(n=2, k=2, min_df=1, max_df=1.0)`
+
+`TfidfVectorizer` with a skip-gram analyzer. Emits every `n`-token tuple with up to `k` skipped positions between consecutive members.
+
+### `bm25_word(ngram_range=(1, 1), min_df=1, k1=1.5, b=0.75)`
+
+Okapi BM25 term weighting. Returns `Pipeline([("count", CountVectorizer(...)), ("bm25", BM25Transformer(k1, b))])`.
+
+## Linguistic
+
+Each builder composes a textâ†’text preprocessing transformer with a TF-IDF tail; `**tfidf_kw` flow to the `TfidfVectorizer`. The optional dependency is lazily imported, raising a clear `ImportError` naming the extra when absent.
+
+### `pos_sequence(lang="en", **tfidf_kw)`
+
+TF-IDF over part-of-speech tag sequences via `brill_postagger` (`[postag]` extra). Raises `ValueError` for a language outside brill's 11.
+
+### `word_pos(lang="en", **tfidf_kw)`
+
+TF-IDF over hybrid `token__POS` tokens via `brill_postagger` (`[postag]` extra). Raises `ValueError` for a language outside brill's 11.
+
+### `stemmed_tfidf(lang="en", **tfidf_kw)`
+
+TF-IDF over Snowball-stemmed tokens via `nltk` (`[stem]` extra). Raises `ValueError` for a language outside Snowball's 15.
+
+### `lemmatized_tfidf(lang="en", **tfidf_kw)`
+
+TF-IDF over lemmatised tokens via `simplemma` (`[lemma]` extra).
+
 ## Composite
 
 ### `text_stats()`
@@ -103,6 +137,18 @@ Returns a fresh `CategoricalVectorizer`. Accepts `list[dict[str, str]]` input â€
 ### `TextStatsTransformer`
 
 `BaseEstimator + TransformerMixin`. Captures the training vocabulary in `vocab_` during `fit`; uses it for the OOV-rate column at `transform`. Always returns a dense float64 matrix.
+
+### `BM25Transformer`
+
+`BaseEstimator + TransformerMixin`. Constructor `BM25Transformer(k1=1.5, b=0.75)`. Sits after a `CountVectorizer`. `fit` records the BM25 idf vector (`idf_`) and average document length (`avgdl_`); `transform` applies the Okapi saturation formula over a sparse count matrix using pure numpy and scipy.sparse, so a fitted instance is picklable.
+
+### `PosSequenceTransformer` / `WordPosTransformer`
+
+`BaseEstimator + TransformerMixin`, constructor takes `lang`. `fit` loads a `brill_postagger` pretrained model once (cached on the instance), raising `ValueError` for an unsupported language and `ImportError` when the `[postag]` extra is absent. `transform` maps `list[str] -> list[str]`: a POS-tag sequence string, or hybrid `token__POS` tokens respectively.
+
+### `StemTransformer` / `LemmaTransformer`
+
+`BaseEstimator + TransformerMixin`, constructor takes `lang`. `StemTransformer` loads an `nltk` Snowball stemmer (`[stem]` extra); `LemmaTransformer` uses `simplemma` (`[lemma]` extra). `transform` maps `list[str] -> list[str]` of stemmed / lemmatised tokens.
 
 ### `SklearnAutoencoder`
 

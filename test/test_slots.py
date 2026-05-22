@@ -322,3 +322,29 @@ def test_compare_taggers_smoke():
     assert len(result.rows) == 4
     for r in result.rows:
         assert 0.0 <= r.exact_match <= 1.0
+
+
+def test_template_tagger_duplicate_slot_name():
+    """A slot name repeated in one template must not crash regex compilation."""
+    from jurebes.slots import TemplateTagger
+    t = TemplateTagger()
+    t.add_intent("rel", ["the {relation} of my {relation}"])
+    t.fit()
+    out = t.predict("the brother of my sister")
+    assert out.get("relation") == "brother"  # first occurrence wins
+
+
+def test_compare_taggers_isolates_failures():
+    """One tagger raising must not abort the whole comparison."""
+    from jurebes.benchmark.slots import compare_taggers
+    intent_samples = {
+        "weather": ["weather in {city}", "forecast for {city}"],
+        "greet": ["hello", "hi there"],
+    }
+    entity_samples = {"city": ["paris", "lisbon"]}
+    test = [("weather in paris", {"city": "paris"}), ("hello", {})]
+    result = compare_taggers(
+        ["dictionary", "template", "sklearn_iob"],
+        intent_samples, entity_samples, test,
+    )
+    assert len(result.rows) == 3  # all three rows present even if one NaNs

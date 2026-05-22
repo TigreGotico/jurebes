@@ -13,9 +13,16 @@ _ALT_RE = re.compile(r"\(([^()]*\|[^()]*)\)")
 
 
 def _compile_template(template: str) -> re.Pattern:
-    """Compile a template like ``"(weather|temperature) in {city}"`` into regex."""
-    # Find slot and alternation spans, escape everything else.
+    """Compile a template like ``"(weather|temperature) in {city}"`` into regex.
+
+    A slot name repeated within one template (e.g. MASSIVE's
+    ``"{relation} of my {relation}"``) cannot reuse the same Python named
+    group. The second and later occurrences get a suffixed group name
+    (``relation__2``); :meth:`TemplateTagger.predict` collapses the suffix
+    back to the base slot name.
+    """
     out: List[str] = []
+    seen: Dict[str, int] = {}
     i = 0
     n = len(template)
     while i < n:
@@ -23,7 +30,9 @@ def _compile_template(template: str) -> re.Pattern:
         m_alt = _ALT_RE.match(template, i)
         if m_slot:
             name = m_slot.group(1)
-            out.append(rf"(?P<{name}>.+?)")
+            seen[name] = seen.get(name, 0) + 1
+            group = name if seen[name] == 1 else f"{name}__{seen[name]}"
+            out.append(rf"(?P<{group}>.+?)")
             i = m_slot.end()
         elif m_alt:
             parts = [re.escape(p) for p in m_alt.group(1).split("|")]
@@ -76,7 +85,15 @@ class TemplateTagger:
         for _t, pat in self._compiled:
             m = pat.match(utterance.strip())
             if m:
-                return {k: v.strip() for k, v in m.groupdict().items() if v is not None}
+                out: Dict[str, str] = {}
+                for k, v in m.groupdict().items():
+                    if v is None:
+                        continue
+                    # Collapse a repeated-slot suffix (relation__2 -> relation);
+                    # the first non-empty occurrence wins.
+                    base = k.split("__")[0]
+                    out.setdefault(base, v.strip())
+                return out
         return {}
 
     def tag(self, text: str) -> List[Tuple[str, str]]:

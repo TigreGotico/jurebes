@@ -37,12 +37,12 @@ benchmark we tested:**
 
 | dataset | best CV baseline | CV accuracy | held-out test accuracy | held-out macro-F1 |
 | --- | --- | ---: | ---: | ---: |
-| SNIPS                | `linear_svc_char` | 0.9856 | **0.9850** | 0.9850 |
-| BANKING77            | `linear_svc_char` | 0.8880 | **0.9029** | 0.9027 |
-| CLINC-150            | `linear_svc_char` | 0.9401 | **0.9082** | 0.9071 |
-| intents-for-eval avg | `linear_svc_char` | 0.7592 | — | — |
+| SNIPS                | `linear_svc_char` | 0.9856 | **0.9843** | 0.9843 |
+| BANKING77            | `linear_svc_char` | 0.8880 | **0.9062** | 0.9060 |
+| CLINC-150            | `linear_svc_char` | 0.9401 | **0.9164** | 0.9157 |
+| intents-for-eval avg | `linear_svc_char` | ~0.842 | — | — |
 
-Friedman+Nemenyi rejects the null hypothesis that the six portfolio
+Friedman+Nemenyi rejects the null hypothesis that the ten portfolio
 baselines are equivalent on every dataset (p ≤ 0.0003). Character n-grams
 + calibrated linear SVM win the ranking decisively when training data
 is genuinely-spelled text.
@@ -55,12 +55,16 @@ prohibitively slow. The full table:
 
 | baseline | accuracy | macro-F1 | train (s) | p95 latency (ms) | model size (KB) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `linear_svc_char`   | 0.8880 | 0.8857 |  78.2 | 117.84 | 33 464 |
-| `linear_svc`        | 0.8823 | 0.8805 |  36.5 |  69.01 |  4 021 |
-| `logreg`            | 0.8600 | 0.8551 |  34.4 |   8.04 |  1 345 |
-| `nb_multinomial`    | 0.8034 | 0.7653 |   0.4 |   8.15 |  2 631 |
-| `lsa_logreg`        | 0.6455 | 0.6186 |  45.0 |  12.23 |    926 |
-| `autoencoder_logreg`| 0.2711 | 0.2052 | 572.8 |  29.07 |  8 762 |
+| `linear_svc_char`              | 0.8880 | 0.8857 |  12.5 |  26.61 | 33 464 |
+| `linear_svc`                   | 0.8823 | 0.8805 |   7.2 |  25.59 |  4 021 |
+| `logreg`                       | 0.8600 | 0.8551 |  10.5 |   1.50 |  1 345 |
+| `label_guided_linear_svc`      | 0.8549 | 0.8524 | 435.4 |  28.34 |  7 080 |
+| `label_guided_logreg`          | 0.8494 | 0.8475 | 362.7 |   1.90 |  6 865 |
+| `nb_multinomial`               | 0.8034 | 0.7653 |   0.2 |   1.48 |  2 631 |
+| `autoencoder_logreg_wide`      | 0.7112 | 0.6907 | 1022.0 | 13.38 | 27 394 |
+| `lsa_logreg`                   | 0.6447 | 0.6166 |   7.8 |   1.97 |    926 |
+| `autoencoder_logreg`           | 0.5595 | 0.5191 | 582.8 |   1.82 |  9 569 |
+| `denoising_autoencoder_logreg` | 0.1902 | 0.1154 | 143.5 |   1.75 |  9 566 |
 
 Three patterns generalise across the canonical datasets:
 
@@ -232,16 +236,68 @@ distinguishable as worse.
   control baseline; reach for `voting_soft` only when ensembling
   buys ≥ 1 point on the specific language of interest.
 
+## MASSIVE-templates — 51-language breadth
+
+`OpenVoiceOS/massive-templates` carries the same Padatious-style
+template + test-split shape as intents-for-eval, but across **51
+languages** with the 60-intent MASSIVE inventory and ~13.5k templates
+per language (expanded to ~13.8k realised utterances). It is the
+widest multilingual intent-classification test in the suite.
+
+Intent classification was run with the seven fast linear / NB /
+ensemble baselines (the MLP autoencoder and label-guided baselines are
+characterised on the canonical datasets and intents-for-eval; they are
+memory-bound on a 13.5k-template corpus). Slot extraction used the two
+zero-memory regex taggers — `dictionary` and `template` — for the same
+reason; the ML slot taggers are benchmarked on intents-for-eval.
+
+### Intent classification
+
+**`linear_svc_char` wins all 51 languages.** Test-set accuracy:
+
+| statistic | value |
+| --- | ---: |
+| mean over 51 languages | 0.8321 |
+| highest | pt-PT 0.8517, nl-NL 0.8514, az-AZ 0.8510 |
+| lowest  | zh-TW 0.7441, km-KH 0.7552, zh-CN 0.7586 |
+
+The cross-language band is tight — 0.74 to 0.85, ~11 points end to
+end, with no per-language tuning. The three lowest are zh-TW, zh-CN and
+km-KH: Chinese and Khmer are the languages where character n-grams over
+whitespace-tokenised text help least (Chinese has no whitespace word
+boundaries; the `char_wb` analyser still extracts useful sub-sequences,
+which is why accuracy holds at ~0.75 rather than collapsing). Every
+other language — including agglutinative (Turkish, Finnish, Hungarian),
+Semitic (Arabic, Hebrew) and Indic scripts — lands in the 0.80-0.85
+band. `linear_svc_char` is a genuinely language-agnostic default.
+
+### Slot extraction
+
+The regex taggers do poorly here: `dictionary` averages ~0.17
+exact-match, `template` near zero. This is expected and not a tagger
+defect — MASSIVE slots are open-vocabulary (song names, place names,
+person names) drawn from a fixed-schema annotation, so gazetteer
+lookup and literal-template matching have little to match. The
+sklearn / CRF taggers on intents-for-eval (CRF exact-match 0.77-0.88)
+are the meaningful slot-extraction numbers; the MASSIVE regex figures
+are a memory-bounded sanity check, not a verdict on slot tagging.
+
+Full per-language numbers: `reports/massive_templates_summary.md` and
+`reports/massive_templates_<lang>.md`.
+
 ## Reproducing the numbers
 
 ```bash
 pip install jurebes[hf,slots-crf,bench-plot]
-python examples/trained_models/train_snips.py
-python examples/trained_models/train_banking77.py
-python examples/trained_models/train_clinc.py
-python examples/trained_models/train_intents_for_eval_all_langs.py
+python examples/trained_models/run_full_sweep.py            # canonical + intents-for-eval
+python examples/trained_models/train_massive_templates_all_langs.py  # 51-language MASSIVE
 python examples/trained_models/_build_report.py
 ```
+
+`run_full_sweep.py` chains SNIPS → BANKING77 → CLINC → intents-for-eval ×12.
+`train_massive_templates_all_langs.py` runs one subprocess per language
+(memory reclaimed between languages) and is resumable — a completed
+language is skipped, so an interrupted sweep can simply be relaunched.
 
 Each script writes its Markdown report under `reports/`; the orchestrator
 also writes the consolidated summary. The figures in this REPORT are

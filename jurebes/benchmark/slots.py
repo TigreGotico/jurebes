@@ -92,19 +92,28 @@ def compare_taggers(
     gold = [g for _, g in test_utterances]
     utts = [u for u, _ in test_utterances]
     for name in tagger_names:
-        tg = TAGGERS.build(name)
-        for ent_name, ent_vals in entity_samples.items():
-            if hasattr(tg, "add_entity"):
-                tg.add_entity(ent_name, ent_vals)
-        for intent_name, samples in intent_samples.items():
-            if hasattr(tg, "add_intent"):
-                tg.add_intent(intent_name, samples)
+        # Each tagger is isolated: a fit/predict failure on one (e.g. a
+        # malformed template) records a NaN row instead of aborting the
+        # whole comparison and losing the other taggers' results.
         try:
-            tg.fit(intent_samples)
-        except TypeError:
-            tg.fit()
-        preds = [tg.predict(u) or {} for u in utts]
-        p, r, f1, em = _score(preds, gold)
+            tg = TAGGERS.build(name)
+            for ent_name, ent_vals in entity_samples.items():
+                if hasattr(tg, "add_entity"):
+                    tg.add_entity(ent_name, ent_vals)
+            for intent_name, samples in intent_samples.items():
+                if hasattr(tg, "add_intent"):
+                    tg.add_intent(intent_name, samples)
+            try:
+                tg.fit(intent_samples)
+            except TypeError:
+                tg.fit()
+            preds = [tg.predict(u) or {} for u in utts]
+            p, r, f1, em = _score(preds, gold)
+        except Exception as exc:  # noqa: BLE001 - report, do not abort
+            from ovos_utils.log import LOG
+            LOG.error(f"slot tagger {name!r} failed: {type(exc).__name__}: {exc}")
+            nan = float("nan")
+            p = r = f1 = em = nan
         rows.append(SlotRunResult(
             name=name,
             slot_precision=p,

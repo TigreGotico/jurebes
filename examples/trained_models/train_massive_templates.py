@@ -109,12 +109,17 @@ def run(lang: str = "en-US") -> str:
         for r in test
     ]
 
-    tagger_names = ["dictionary", "template", "sklearn_iob", "knn", "hybrid"]
-    try:
-        import sklearn_crfsuite  # noqa: F401
-        tagger_names.append("crf")
-    except ImportError:
-        md.append("> CRF tagger skipped: install `jurebes[slots-crf]` to include it.\n")
+    # The 51-language MASSIVE sweep uses only the two zero-memory regex
+    # taggers. The ML taggers (sklearn_iob / knn / hybrid / crf) expand
+    # every template against every entity-example combination via
+    # _build_iob; on ~13.5k templates per language that peak trips the
+    # OS OOM killer. Those taggers are characterised on intents-for-eval
+    # (where CRF wins 11/12 languages).
+    tagger_names = ["dictionary", "template"]
+    md.append("> Slot extraction on the MASSIVE sweep uses the regex "
+              "taggers only (`dictionary`, `template`); the ML taggers "
+              "are memory-bound on this corpus and are benchmarked on "
+              "intents-for-eval instead.\n")
 
     try:
         result = compare_taggers(

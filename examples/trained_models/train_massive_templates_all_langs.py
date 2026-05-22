@@ -1,21 +1,23 @@
-"""Sweep ``train_massive_templates.run`` across all 51 MASSIVE languages.
+"""Sweep ``train_massive_templates`` across all 51 MASSIVE languages.
 
-Writes one per-language report + a consolidated summary mirroring the
-intents-for-eval orchestrator.
+Each language is trained in its own subprocess so the OS reclaims all
+memory between languages — the in-process design peaked high enough on
+~13.5k-template corpora to trip the OOM killer. The sweep is resumable:
+a language whose report already exists is skipped, so a kill costs at
+most the one in-progress language.
 
-This will take a while. ~10-20 minutes per language on commodity CPU,
-so plan for 8-15 hours total. Run in a terminal multiplexer.
+Writes one per-language report + a consolidated summary.
 
-Requires: pip install jurebes[hf,slots-crf]
+Requires: pip install jurebes[hf]
 """
 
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 import time
 from pathlib import Path
-
-from train_massive_templates import run as run_one
 
 
 HERE = Path(__file__).resolve().parent
@@ -69,19 +71,29 @@ def _extract_best_slot_row(report: str):
 
 
 def main():
+    single = HERE / "train_massive_templates.py"
     summary_rows = []
     for lang in LANGS:
-        t0 = time.perf_counter()
-        try:
-            report = run_one(lang)
-            ok = True
-        except Exception as e:
-            report = f"# massive-templates ({lang}) — failed\n\n`{type(e).__name__}: {e}`"
-            ok = False
-        dt = time.perf_counter() - t0
         out = REPORTS / f"massive_templates_{lang}.md"
-        out.write_text(report, encoding="utf-8")
-        print(f"[{lang}] wrote {out.name} ({dt:.1f}s) ok={ok}")
+        # Resumable: skip a language whose report already exists.
+        if out.exists() and "— failed" not in out.read_text(encoding="utf-8"):
+            report = out.read_text(encoding="utf-8")
+            print(f"[{lang}] skip — report already present", flush=True)
+        else:
+            t0 = time.perf_counter()
+            # One subprocess per language: the OS reclaims every byte on
+            # exit, so peak memory is one language's worth, not 51.
+            rc = subprocess.run(
+                [sys.executable, str(single), lang], cwd=HERE,
+            ).returncode
+            dt = time.perf_counter() - t0
+            if out.exists():
+                report = out.read_text(encoding="utf-8")
+                print(f"[{lang}] done ({dt:.1f}s) rc={rc}", flush=True)
+            else:
+                report = f"# massive-templates ({lang}) — failed\n\n`subprocess rc={rc}`"
+                out.write_text(report, encoding="utf-8")
+                print(f"[{lang}] subprocess died rc={rc} ({dt:.1f}s)", flush=True)
 
         intent_name, intent_acc, intent_f1 = _extract_best_intent_row(report)
         slot_name, slot_prec, slot_f1, slot_em = _extract_best_slot_row(report)

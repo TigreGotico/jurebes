@@ -290,6 +290,74 @@ def word_pos(lang="en", **tfidf_kw):
                      ("tfidf", TfidfVectorizer(**tfidf_kw))])
 
 
+class StemTransformer(BaseEstimator, TransformerMixin):
+    """Map each utterance to its Snowball-stemmed token sequence.
+
+    Stemming collapses morphological variants (``"running"`` → ``"run"``) so a
+    downstream `TfidfVectorizer` shares statistical mass across inflections.
+    Uses `nltk.stem.SnowballStemmer`, which covers 15 languages.
+    """
+
+    def __init__(self, lang: str = "en"):
+        self.lang = lang
+
+    def fit(self, X, y=None):
+        if self.lang not in _SNOWBALL_LANGS:
+            raise ValueError(
+                f"unsupported language {self.lang!r}; Snowball covers "
+                f"{sorted(_SNOWBALL_LANGS)}")
+        try:
+            from nltk.stem import SnowballStemmer
+        except ImportError as exc:
+            raise ImportError(
+                "install jurebes[stem] to use the stemming featurizer") from exc
+        self.stemmer_ = SnowballStemmer(_SNOWBALL_LANGS[self.lang])
+        return self
+
+    def transform(self, X):
+        stem = self.stemmer_.stem
+        return [" ".join(stem(tok) for tok in _TOKEN_RE.findall(str(s).lower()))
+                for s in X]
+
+
+class LemmaTransformer(BaseEstimator, TransformerMixin):
+    """Map each utterance to its lemmatised token sequence.
+
+    Lemmatisation reduces tokens to their dictionary form (``"better"`` →
+    ``"good"``) using `simplemma`, a lightweight rule-and-lexicon lemmatiser
+    covering many languages.
+    """
+
+    def __init__(self, lang: str = "en"):
+        self.lang = lang
+
+    def fit(self, X, y=None):
+        try:
+            import simplemma  # noqa: F401
+        except ImportError as exc:
+            raise ImportError(
+                "install jurebes[lemma] to use the lemmatisation featurizer") from exc
+        return self
+
+    def transform(self, X):
+        import simplemma
+        return [" ".join(simplemma.lemmatize(tok, lang=self.lang)
+                          for tok in _TOKEN_RE.findall(str(s).lower()))
+                for s in X]
+
+
+def stemmed_tfidf(lang="en", **tfidf_kw):
+    """TF-IDF over Snowball-stemmed tokens (`nltk`, ``[stem]`` extra)."""
+    return Pipeline([("stem", StemTransformer(lang)),
+                     ("tfidf", TfidfVectorizer(**tfidf_kw))])
+
+
+def lemmatized_tfidf(lang="en", **tfidf_kw):
+    """TF-IDF over lemmatised tokens (`simplemma`, ``[lemma]`` extra)."""
+    return Pipeline([("lem", LemmaTransformer(lang)),
+                     ("tfidf", TfidfVectorizer(**tfidf_kw))])
+
+
 # ── text_stats ─────────────────────────────────────────────────────────────
 
 _PUNCT_RE = re.compile(r"[^\w\s]")

@@ -55,16 +55,19 @@ prohibitively slow. The full table:
 
 | baseline | accuracy | macro-F1 | train (s) | p95 latency (ms) | model size (KB) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `linear_svc_char`              | 0.8880 | 0.8857 |  12.5 |  26.61 | 33 464 |
-| `linear_svc`                   | 0.8823 | 0.8805 |   7.2 |  25.59 |  4 021 |
-| `logreg`                       | 0.8600 | 0.8551 |  10.5 |   1.50 |  1 345 |
-| `label_guided_linear_svc`      | 0.8549 | 0.8524 | 435.4 |  28.34 |  7 080 |
-| `label_guided_logreg`          | 0.8494 | 0.8475 | 362.7 |   1.90 |  6 865 |
-| `nb_multinomial`               | 0.8034 | 0.7653 |   0.2 |   1.48 |  2 631 |
-| `autoencoder_logreg_wide`      | 0.7112 | 0.6907 | 1022.0 | 13.38 | 27 394 |
-| `lsa_logreg`                   | 0.6447 | 0.6166 |   7.8 |   1.97 |    926 |
-| `autoencoder_logreg`           | 0.5595 | 0.5191 | 582.8 |   1.82 |  9 569 |
-| `denoising_autoencoder_logreg` | 0.1902 | 0.1154 | 143.5 |   1.75 |  9 566 |
+| `linear_svc_char`              | 0.8880 | 0.8857 |   2.6 |   4.25 | 33 464 |
+| `linear_svc`                   | 0.8823 | 0.8805 |   1.0 |   4.12 |  4 021 |
+| `union_skipgram_tfidf_logreg`  | 0.8775 | 0.8761 |  22.4 |  18.07 | 34 132 |
+| `union_bm25_pos_logreg`        | 0.8740 | 0.8723 |   8.9 |   1.50 |  1 699 |
+| `bm25_logreg`                  | 0.8729 | 0.8712 |   6.3 |   0.49 |  1 345 |
+| `logreg`                       | 0.8600 | 0.8551 |   6.2 |   0.45 |  1 345 |
+| `label_guided_linear_svc`      | 0.8549 | 0.8524 | 123.5 |   4.49 |  7 080 |
+| `label_guided_logreg`          | 0.8494 | 0.8475 | 120.5 |   0.54 |  6 865 |
+| `nb_multinomial`               | 0.8034 | 0.7653 |   0.1 |   0.38 |  2 631 |
+| `autoencoder_logreg_wide`      | 0.7112 | 0.6907 | 638.7 |   6.67 | 27 394 |
+| `lsa_logreg`                   | 0.6413 | 0.6129 |   3.3 |   0.57 |    926 |
+| `autoencoder_logreg`           | 0.5595 | 0.5191 | 248.7 |   0.51 |  9 569 |
+| `denoising_autoencoder_logreg` | 0.1902 | 0.1154 |  62.6 |   0.46 |  9 566 |
 
 Three patterns generalise across the canonical datasets:
 
@@ -277,29 +280,35 @@ expands `{slot}` placeholders into realised utterances.
 
 ![intents-for-eval — best baseline per language](reports/figures/02_ife_per_language_intent.png)
 
-| lang  | best baseline       | best accuracy |
-| ---   | ---                 | ---: |
-| en-US | `linear_svc_char`   | 0.8306 |
-| pt-PT | `linear_svc_char`   | 0.8388 |
-| pt-BR | `linear_svc_char`   | 0.8453 |
-| es-ES | `linear_svc_char`   | 0.8335 |
-| fr-FR | `linear_svc_char`   | 0.8376 |
-| de-DE | `linear_svc_char`   | 0.8388 |
-| it-IT | `linear_svc_char`   | 0.8394 |
-| nl-NL | `linear_svc_char`   | 0.8394 |
-| ca-ES | `linear_svc_char`   | 0.8471 |
-| gl-ES | `linear_svc_char`   | 0.8441 |
-| da-DK | `linear_svc_char`   | **0.8576** |
-| eu-ES | `linear_svc_char`   | 0.8382 |
+| lang  | best baseline             | best accuracy |
+| ---   | ---                       | ---: |
+| en-US | `union_bm25_pos_logreg`   | 0.8318 |
+| pt-PT | `linear_svc_char`         | 0.8394 |
+| pt-BR | `linear_svc_char`         | 0.8441 |
+| es-ES | `union_bm25_pos_logreg`   | 0.8394 |
+| fr-FR | `linear_svc_char`         | 0.8394 |
+| de-DE | `linear_svc_char`         | 0.8406 |
+| it-IT | `linear_svc_char`         | 0.8388 |
+| nl-NL | `linear_svc_char`         | 0.8359 |
+| ca-ES | `linear_svc_char`         | 0.8488 |
+| gl-ES | `linear_svc_char`         | 0.8447 |
+| da-DK | `linear_svc_char`         | **0.8535** |
+| eu-ES | `linear_svc_char`         | 0.8376 |
 
-The cross-language band is tight — every winner falls between 0.83 and
+`linear_svc_char` wins 10 of 12 languages; `union_bm25_pos_logreg`
+takes en-US (0.8318) and es-ES (0.8394) by a fraction of a point. The
+cross-language band is tight — every winner falls between 0.83 and
 0.86. Two observations:
 
 - **Basque (eu-ES) and Catalan (ca-ES) do not underperform** despite
   smaller training corpora in the public eye. The character-n-gram
   representation is morphology-agnostic; it handles the agglutinative
   case-marking in Basque and the article-fronting in Catalan without
-  any language-specific tuning.
+  any language-specific tuning. The eu-ES loader drops 57 templates
+  that use the `(letter)` Basque case-marker convention as informal
+  optional brackets — the convention is incompatible with the parser's
+  strict alternation requirement, so the bad rows are dropped at load
+  time and the remaining 943 templates train cleanly.
 - **Danish (da-DK) tops the table.** Likely because the template
   surface forms in this dataset are tighter and there is less
   inflectional variance to learn — not a claim about the language

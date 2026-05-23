@@ -119,22 +119,40 @@ def load_intents_for_eval(lang: str = "en-US", expand_templates: bool = True,
     intent_samples: Dict[str, List[str]] = {}
     template_samples: Dict[str, List[str]] = {}
     entity_samples: Dict[str, List[str]] = {}
+    n_dropped = 0
     for row in templates:
         slots = row["slots"] or []
-        template_samples.setdefault(row["intent_id"], []).append(row["template"])
+        template = row["template"]
+        # Drop templates that the expander cannot parse. Some language
+        # corpora use the alternation parenthesis convention informally
+        # (Basque case-marker letters like "{contact}-(r)i"); the
+        # alternation parser requires a "|" inside parens and rejects
+        # single-branch groups. Bad rows are dropped at load time so the
+        # downstream training does not crash.
         if expand_templates:
-            expanded, _ = _expand_template(
-                row["template"], slots, expansions_per_template,
-            )
+            try:
+                expanded, _ = _expand_template(
+                    template, slots, expansions_per_template,
+                )
+            except Exception:
+                n_dropped += 1
+                continue
             for utt in expanded:
                 intent_samples.setdefault(row["intent_id"], []).append(utt)
         else:
-            intent_samples.setdefault(row["intent_id"], []).append(row["template"])
+            intent_samples.setdefault(row["intent_id"], []).append(template)
+        template_samples.setdefault(row["intent_id"], []).append(template)
         for slot in slots:
             bucket = entity_samples.setdefault(slot["name"], [])
             for ex in slot.get("examples") or []:
                 if ex and ex not in bucket:
                     bucket.append(ex)
+    if n_dropped:
+        import logging
+        logging.getLogger(__name__).warning(
+            "intents-for-eval %s: dropped %d malformed templates",
+            lang, n_dropped,
+        )
 
     kw: Dict[str, Dict[str, Dict[str, List[str]]]] = {}
     for row in keywords:

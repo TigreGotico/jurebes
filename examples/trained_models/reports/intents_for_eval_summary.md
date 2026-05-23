@@ -5,15 +5,15 @@ Full per-language reports under `intents_for_eval_<lang>.md`.
 
 | lang | intent_top1_baseline | intent_accuracy | intent_macro_f1 | slot_top_tagger | slot_precision | slot_f1 | slot_exact_match | wall_s |
 |---|---|---|---|---|---|---|---|---|
-| en-US | linear_svc_char | 0.8306 | 0.8339 | crf | 0.9038 | 0.8762 | 0.8829 | 604.3 |
-| pt-PT | linear_svc_char | 0.8400 | 0.8449 | crf | 0.8348 | 0.8143 | 0.8365 | 611.4 |
-| pt-BR | linear_svc_char | 0.8453 | 0.8468 | crf | 0.8344 | 0.8129 | 0.8371 | 554.7 |
-| es-ES | linear_svc_char | 0.8335 | 0.8379 | crf | 0.8482 | 0.8272 | 0.8435 | 562.0 |
-| fr-FR | linear_svc_char | 0.8382 | 0.8418 | dictionary | 0.8316 | 0.8305 | 0.7976 | 584.0 |
-| de-DE | linear_svc_char | 0.8406 | 0.8431 | crf | 0.8993 | 0.8668 | 0.8694 | 488.0 |
-| it-IT | linear_svc_char | 0.8382 | 0.8418 | crf | 0.8086 | 0.7899 | 0.8153 | 546.5 |
-| nl-NL | linear_svc_char | 0.8359 | 0.8393 | crf | 0.8520 | 0.8328 | 0.8500 | 606.3 |
-| ca-ES | linear_svc_char | 0.8471 | 0.8501 | crf | 0.7912 | 0.7737 | 0.8112 | 528.2 |
-| gl-ES | linear_svc_char | 0.8441 | 0.8471 | crf | 0.8796 | 0.8662 | 0.8741 | 464.0 |
-| da-DK | linear_svc_char | 0.8565 | 0.8600 | crf | 0.8447 | 0.7849 | 0.8041 | 589.9 |
-| eu-ES | linear_svc_char | 0.8388 | 0.8396 | crf | 0.8438 | 0.7420 | 0.7747 | 608.6 |
+| en-US | union_bm25_pos_logreg | 0.8318 | 0.8344 | crf | 0.9047 | 0.8766 | 0.8841 | 0.0 |
+| pt-PT | linear_svc_char | 0.8394 | 0.8440 | crf | 0.8375 | 0.8169 | 0.8382 | 0.0 |
+| pt-BR | linear_svc_char | 0.8441 | 0.8455 | crf | 0.8350 | 0.8127 | 0.8365 | 0.0 |
+| es-ES | union_bm25_pos_logreg | 0.8394 | 0.8414 | crf | 0.8489 | 0.8248 | 0.8418 | 0.0 |
+| fr-FR | linear_svc_char | 0.8394 | 0.8430 | dictionary | 0.8316 | 0.8305 | 0.7976 | 0.0 |
+| de-DE | linear_svc_char | 0.8406 | 0.8432 | crf | 0.9000 | 0.8667 | 0.8694 | 0.0 |
+| it-IT | linear_svc_char | 0.8388 | 0.8424 | crf | 0.8071 | 0.7892 | 0.8141 | 0.0 |
+| nl-NL | linear_svc_char | 0.8359 | 0.8393 | crf | 0.8533 | 0.8325 | 0.8512 | 0.0 |
+| ca-ES | linear_svc_char | 0.8488 | 0.8518 | crf | 0.7915 | 0.7748 | 0.8124 | 0.0 |
+| gl-ES | linear_svc_char | 0.8447 | 0.8477 | crf | 0.8767 | 0.8621 | 0.8718 | 0.0 |
+| da-DK | linear_svc_char | 0.8535 | 0.8569 | crf | 0.8644 | 0.8028 | 0.8159 | 0.0 |
+| eu-ES | linear_svc_char | 0.8376 | 0.8382 | crf | 0.8696 | 0.7567 | 0.7776 | 144.8 |

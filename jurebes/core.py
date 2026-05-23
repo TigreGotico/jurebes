@@ -28,7 +28,16 @@ def _expand_samples(samples: List[str]) -> List[str]:
     out: List[str] = []
     seen: set = set()
     for s in samples:
-        variants = expand_template(s) if ("(" in s or "[" in s) else [s]
+        if "(" in s or "[" in s:
+            try:
+                variants = expand_template(s)
+            except Exception:
+                # Malformed bracket conventions (single-branch alternation,
+                # informal language-specific markers) fall back to the
+                # literal sample rather than aborting the whole training set.
+                variants = [s]
+        else:
+            variants = [s]
         for v in variants:
             v = _WS_RE.sub(" ", v).strip()
             if v and v not in seen:

@@ -11,17 +11,20 @@ Train on Padatious-style templates, evaluate top-1 intent on the test split.
 
 | baseline | accuracy | macro_f1 |
 |---|---|---|
-| linear_svc_char | 0.8406 | 0.8431 |
-| logreg_char | 0.8229 | 0.8239 |
-| voting_soft | 0.8182 | 0.8222 |
-| label_guided_logreg | 0.8141 | 0.8178 |
+| linear_svc_char | 0.8406 | 0.8432 |
+| logreg_char | 0.8235 | 0.8243 |
+| voting_soft | 0.8176 | 0.8217 |
+| union_skipgram_tfidf_logreg | 0.8165 | 0.8216 |
+| label_guided_logreg | 0.8159 | 0.8196 |
+| bm25_logreg | 0.8129 | 0.8173 |
 | linear_svc | 0.8118 | 0.8168 |
 | ovr_linear_svc | 0.8118 | 0.8168 |
-| label_guided_linear_svc | 0.8071 | 0.8109 |
-| logreg | 0.7918 | 0.7958 |
+| union_bm25_pos_logreg | 0.8118 | 0.8161 |
+| label_guided_linear_svc | 0.8059 | 0.8098 |
+| logreg | 0.7906 | 0.7950 |
 | nb_multinomial | 0.6559 | 0.6292 |
-| autoencoder_logreg | 0.4659 | 0.4113 |
-| denoising_autoencoder_logreg | 0.1535 | 0.0876 |
+| autoencoder_logreg | 0.4341 | 0.3816 |
+| denoising_autoencoder_logreg | 0.1506 | 0.0873 |
 
 **winning baseline (intent):** `linear_svc_char`
 
@@ -32,11 +35,11 @@ Train each tagger on the same templates + entity gazetteer; evaluate against the
 | tagger | slot_precision | slot_recall | slot_f1 | exact_match | n_test |
 | --- | --- | --- | --- | --- | --- |
 | dictionary | 0.8663 | 0.8134 | 0.8390 | 0.8141 | 1700 |
-| template | 0.6380 | 0.4394 | 0.5204 | 0.5929 | 1700 |
-| sklearn_iob | 0.8731 | 0.8340 | 0.8531 | 0.8647 | 1700 |
-| knn | 0.5381 | 0.4858 | 0.5106 | 0.6229 | 1700 |
-| hybrid | 0.6907 | 0.8831 | 0.7751 | 0.7465 | 1700 |
-| crf | 0.8993 | 0.8366 | 0.8668 | 0.8694 | 1700 |
+| template | 0.6529 | 0.4205 | 0.5115 | 0.5918 | 1700 |
+| sklearn_iob | 0.8708 | 0.8289 | 0.8493 | 0.8618 | 1700 |
+| knn | 0.5277 | 0.4755 | 0.5002 | 0.6153 | 1700 |
+| hybrid | 0.7054 | 0.8831 | 0.7843 | 0.7518 | 1700 |
+| crf | 0.9000 | 0.8358 | 0.8667 | 0.8694 | 1700 |
 
 ## Per-domain intent accuracy
 

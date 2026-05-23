@@ -201,6 +201,79 @@ Full per-dataset tables and the Friedman+Nemenyi cliques are in
 [`reports/featurizer_bench_{snips,banking77,clinc}.md`](reports/).
 The bench script is [`train_featurizer_bench.py`](train_featurizer_bench.py).
 
+### Union ablation — do the weak featurizers contribute in combination?
+
+POS-sequence collapsed solo (rank 11). Skip-grams underperformed solo
+(rank 8-9). Both ought to be tested *as channels in a `feature_union`
+with a strong lexical channel* before being dismissed — the right
+ablation question. Four new union baselines:
+
+- `union_skipgram_tfidf_logreg` — `tfidf_word + skipgram_word`
+- `union_pos_tfidf_logreg` — `tfidf_word + pos_sequence`
+- `union_pos_char_logreg` — `tfidf_char + pos_sequence`
+- `union_bm25_pos_logreg` — `bm25_word  + pos_sequence`
+
+Re-benched against `linear_svc_char` / `bm25_logreg` / `logreg` /
+solo-skipgram / solo-POS on SNIPS / BANKING77 / CLINC, 3-fold CV:
+
+| baseline | SNIPS rank | BANKING77 rank | CLINC rank | mean |
+| --- | ---: | ---: | ---: | ---: |
+| `linear_svc_char` *(ref)*        | 1.67 | 1.00 | 1.00 | **1.22** |
+| `union_bm25_pos_logreg`          | 2.00 | 2.00 | 2.67 | **2.22** |
+| `bm25_logreg` *(ref)*            | 2.67 | 3.33 | 3.00 | 3.00 |
+| `union_skipgram_tfidf_logreg`    | 3.67 | 3.67 | 3.33 | **3.56** |
+| `union_pos_char_logreg`          | 6.00 | 5.00 | 5.67 | 5.56 |
+| `logreg` *(ref)*                 | 5.33 | 6.33 | 5.33 | 5.67 |
+| `union_pos_tfidf_logreg`         | 6.67 | 6.67 | 7.00 | 6.78 |
+| `skipgram_logreg` (solo, ref)    | 8.00 | 8.00 | 8.00 | 8.00 |
+| `pos_sequence_logreg` (solo)     | 9.00 | 9.00 | 9.00 | 9.00 |
+
+### Findings
+
+- **Skip-grams contribute meaningfully in union.** Standalone they
+  ranked 8-9; paired with `tfidf_word` they jump to rank ~3.5, lifting
+  accuracy over plain `logreg` by **+0.0145 on BANKING77 and +0.0179 on
+  CLINC** (negligible on SNIPS). The complementary-signal hypothesis
+  holds for skip-grams: contiguous n-grams + skip-grams beat either
+  alone. The earlier "skip-grams disappoint" verdict was about the
+  wrong question — solo skip-grams underperform, but they are not
+  useless.
+
+- **POS in union with plain TF-IDF actively hurts.**
+  `union_pos_tfidf_logreg` is *worse* than plain `logreg` on every
+  dataset: **−0.0017 (SNIPS), −0.0050 (BANKING77), −0.0039 (CLINC)**.
+  The POS channel adds noise faster than signal when the lexical
+  channel already discriminates well. The user-intuition "POS would
+  never work alone but might help in union" is half right — it does
+  not get rescued by plain word TF-IDF.
+
+- **POS in union with BM25 gives a marginal lift.**
+  `union_bm25_pos_logreg` beats plain `bm25_logreg` by **+0.0002 /
+  +0.0011 / +0.0005** — statistically tied on SNIPS, tiny real lift
+  on BANKING77 / CLINC. The BM25-saturated lexical channel leaves
+  enough room for POS to contribute marginally. It also has the same
+  cost advantage as `bm25_logreg`: ~50× smaller than `linear_svc_char`
+  on CLINC (5.4 MB vs 99 MB) at within ~0.4 points of accuracy.
+
+- **POS in union with char n-grams** falls between the two —
+  marginal, never beats `bm25_logreg`.
+
+- **The union does not overtake `linear_svc_char`** on any dataset.
+  Char n-grams + a calibrated linear SVM still wins on raw accuracy;
+  unions only displace it on the production-deployment recommendation
+  (smaller, faster).
+
+### Updated recommendation
+
+- **Highest accuracy:** still `linear_svc_char`.
+- **Production deployment** (latency / size matters): `bm25_logreg`
+  remains the best simple choice; `union_bm25_pos_logreg` adds a
+  marginal lift if the `[postag]` extra is acceptable.
+- **High-class-count datasets:** add `union_skipgram_tfidf_logreg` to
+  the portfolio — its +1.5 / +1.8 point lift over plain `logreg` on
+  BANKING77 / CLINC is the most consistent ablation gain measured.
+- **Do not** combine POS with plain word TF-IDF — it hurts.
+
 ## Multilingual intent classification
 
 intents-for-eval covers 12 languages with the same 50-intent inventory

@@ -116,6 +116,91 @@ The 14× latency jump from `logreg` to `linear_svc_char` buys 3 points
 of accuracy. For OVOS-pipeline confidence thresholds, the cheaper
 baseline is plenty when the use case can tolerate the gap.
 
+## New featurizers (skip-grams, BM25, random-projection, POS, stem, lemma)
+
+`linear_svc_char` is the established winner across every prior
+benchmark. To find what could rival it the framework grew eight new
+featurizer baselines — three pure-sklearn (skip-grams, Okapi BM25,
+sparse random projection) and four behind optional dependencies
+(POS-sequence and word⊕POS via `brill_postagger`, Snowball-stemmed
+TF-IDF, simplemma-lemmatised TF-IDF). All eight were re-benchmarked
+against `linear_svc_char` / `logreg` / `nb_multinomial` on SNIPS,
+BANKING77 and CLINC-150 with 3-fold CV + Friedman+Nemenyi.
+
+### Mean rank across the three datasets (lower is better)
+
+| baseline                   | SNIPS rank | BANKING77 rank | CLINC rank | mean |
+| ---                        | ---: | ---: | ---: | ---: |
+| `linear_svc_char` *(ref)*  | 1.67 | 1.00 | 1.00 | **1.22** |
+| `bm25_logreg`              | 2.00 | 2.00 | 2.00 | **2.00** |
+| `bm25_linear_svc`          | 2.33 | 6.00 | 4.33 | 4.22 |
+| `stemmed_logreg`           | 6.67 | 3.00 | 4.00 | 4.56 |
+| `lemmatized_logreg`        | 7.00 | 4.00 | 5.00 | 5.33 |
+| `logreg` *(ref)*           | 4.33 | 5.67 | 5.67 | 5.22 |
+| `word_pos_logreg`          | 5.00 | 6.33 | 7.33 | 6.22 |
+| `nb_multinomial` *(ref)*   | 7.00 | 9.00 | 6.67 | 7.56 |
+| `skipgram_logreg`          | 9.00 | 8.00 | 9.00 | 8.67 |
+| `random_projection_logreg` | 10.00 | 10.00 | 10.00 | 10.00 |
+| `pos_sequence_logreg`      | 11.00 | 11.00 | 11.00 | 11.00 |
+
+Friedman p < 0.003 on every dataset — the differences are real.
+
+### Findings
+
+- **BM25 is the real win of the sprint.** `bm25_logreg` ranks 2nd on
+  every single dataset and is statistically indistinguishable from
+  `linear_svc_char` on SNIPS. CV macro-F1: SNIPS 0.984 (vs 0.984),
+  BANKING77 0.869 (vs 0.881), CLINC 0.931 (vs 0.934). The kicker is
+  cost — its model is **~50× smaller** (647 KB vs 9.7 MB on SNIPS) and
+  inference is **~3× faster** (p50 1.12 ms vs 3.53 ms). For
+  latency-sensitive deployments BM25 is the better choice. Okapi
+  saturation (`tf*(k1+1)/(tf+k1*(...))` instead of raw TF) outperforms
+  TF-IDF on bag-of-word features.
+
+- **Stemming pays off at high class counts.** `stemmed_logreg` places
+  3rd on BANKING77 (0.865) and 3rd on CLINC (0.915), ahead of plain
+  `logreg` on both — but only mid-pack on 7-class SNIPS. The
+  morphological collapse of Snowball stemming helps exactly when
+  vocabulary sparsity is the bottleneck (many intents, few samples per
+  rare-word variant). `lemmatized_logreg` follows the same pattern one
+  step weaker.
+
+- **Skip-grams disappoint.** `skipgram_logreg` ranks 8-9 on every
+  dataset, 5-9 points behind contiguous n-grams. Standalone skip-grams
+  add noise faster than signal on short utterances. Worth retrying in
+  a `feature_union` with regular n-grams — not as the sole featurizer.
+
+- **Random projection is consistently bad.** Rank 10 on all three.
+  Johnson-Lindenstrauss preserves *distance*, but text classification
+  needs to preserve *discriminative directions* — the random basis
+  doesn't. Matches the LSA/NMF pattern.
+
+- **Pure POS-sequence collapses.** `pos_sequence_logreg`: 0.60 on
+  SNIPS, **0.15 on BANKING77, 0.17 on CLINC**. Pure syntactic structure
+  with no lexical content is hopeless on high-class-count intent data.
+  Use it only inside a `feature_union(tfidf_word(), pos_sequence())`.
+
+- **`word_pos` (lexical+POS hybrid tokens) is middling.** Adds nothing
+  over plain word TF-IDF when the lexical signal already discriminates.
+  POS disambiguation matters more on noun-vs-verb-overloaded vocab
+  than on these datasets.
+
+### Recommendation update
+
+- **Production text-classification deployment:** prefer `bm25_logreg`
+  over `linear_svc_char` when model size or inference latency matter
+  — accuracy is within ~1 point and you save ~50× on disk and 3× on
+  inference. Reach for `linear_svc_char` only when the last 1-2 points
+  of accuracy buy back the size/latency cost.
+- **High-class-count datasets (>50 intents):** add `stemmed_logreg` to
+  the comparison portfolio.
+- **POS / random-projection / standalone-skipgram:** keep them as
+  comparison baselines, not as defaults.
+
+Full per-dataset tables and the Friedman+Nemenyi cliques are in
+[`reports/featurizer_bench_{snips,banking77,clinc}.md`](reports/).
+The bench script is [`train_featurizer_bench.py`](train_featurizer_bench.py).
+
 ## Multilingual intent classification
 
 intents-for-eval covers 12 languages with the same 50-intent inventory

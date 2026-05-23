@@ -11,12 +11,16 @@ PORTFOLIO = [
     "logreg",
     "linear_svc",
     "linear_svc_char",
+    "bm25_logreg",
     "lsa_logreg",
     "autoencoder_logreg",
     "autoencoder_logreg_wide",
     "denoising_autoencoder_logreg",
     "label_guided_logreg",
     "label_guided_linear_svc",
+    # Ablation channels — union variants that complement the lexical references.
+    "union_skipgram_tfidf_logreg",
+    "union_bm25_pos_logreg",
 ]
 
 HERE = Path(__file__).resolve().parent

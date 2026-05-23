@@ -70,8 +70,10 @@ def run(lang: str = "en-US") -> str:
     portfolio = [
         "nb_multinomial", "logreg", "linear_svc", "linear_svc_char",
         "logreg_char", "ovr_linear_svc", "voting_soft",
+        "bm25_logreg",
         "autoencoder_logreg", "denoising_autoencoder_logreg",
         "label_guided_logreg", "label_guided_linear_svc",
+        "union_skipgram_tfidf_logreg", "union_bm25_pos_logreg",
     ]
     rows = []
     for name in portfolio:

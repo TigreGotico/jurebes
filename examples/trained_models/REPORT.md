@@ -81,12 +81,11 @@ Three patterns generalise across the canonical datasets:
   loss, `y = X`, unsupervised) compresses whatever carries
   reconstruction error — not whatever discriminates classes. On
   7-class SNIPS `autoencoder_logreg` lands at 0.97; on 77-class
-  BANKING77 it falls to 0.56 with the auto-sized bottleneck (it was
-  0.27 with the old fixed `(64,16,64)`). `autoencoder_logreg_wide`
-  reaches 0.71. `denoising_autoencoder_logreg` is *worse* — 0.19 on
-  BANKING77 — because Gaussian noise on sparse TF-IDF destroys signal
-  rather than regularising it; denoising autoencoders suit dense
-  continuous inputs, not bag-of-words.
+  BANKING77 it falls to 0.56. `autoencoder_logreg_wide` reaches 0.71.
+  `denoising_autoencoder_logreg` is *worse* — 0.19 on BANKING77 —
+  because Gaussian noise on sparse TF-IDF destroys signal rather than
+  regularising it; denoising autoencoders suit dense continuous inputs,
+  not bag-of-words.
 
 - **Label-guided embeddings are not autoencoders, and they win the
   reduced-dim group.** `label_guided_logreg` / `label_guided_linear_svc`
@@ -97,9 +96,8 @@ Three patterns generalise across the canonical datasets:
   happens to be a `reduced_dim` featurizer. On BANKING77 they reach
   ~0.85 (vs the autoencoder's 0.56) — within 3-4 points of the
   `linear_svc_char` leader, and on SNIPS effectively tied (0.982 vs
-  0.986). The lesson is not "fix the autoencoder" but "for intent
-  classification, supervise the bottleneck — that is a classifier
-  feature extractor, not an autoencoder."
+  0.986). For intent classification, a supervised bottleneck (classifier
+  feature extractor) outperforms an unsupervised reconstruction bottleneck.
 
 ### Latency vs accuracy
 
@@ -116,16 +114,15 @@ The 14× latency jump from `logreg` to `linear_svc_char` buys 3 points
 of accuracy. For OVOS-pipeline confidence thresholds, the cheaper
 baseline is plenty when the use case can tolerate the gap.
 
-## New featurizers (skip-grams, BM25, random-projection, POS, stem, lemma)
+## Featurizers beyond TF-IDF
 
-`linear_svc_char` is the established winner across every prior
-benchmark. To find what could rival it the framework grew eight new
-featurizer baselines — three pure-sklearn (skip-grams, Okapi BM25,
-sparse random projection) and four behind optional dependencies
-(POS-sequence and word⊕POS via `brill_postagger`, Snowball-stemmed
-TF-IDF, simplemma-lemmatised TF-IDF). All eight were re-benchmarked
-against `linear_svc_char` / `logreg` / `nb_multinomial` on SNIPS,
-BANKING77 and CLINC-150 with 3-fold CV + Friedman+Nemenyi.
+Eight featurizers extend the bag-of-words TF-IDF baseline — three
+pure-sklearn (skip-grams, Okapi BM25, sparse random projection) and
+four behind optional dependencies (POS-sequence and word⊕POS via
+`brill_postagger`, Snowball-stemmed TF-IDF, simplemma-lemmatised
+TF-IDF). Each is benched against `linear_svc_char` / `logreg` /
+`nb_multinomial` on SNIPS, BANKING77 and CLINC-150 with 3-fold CV +
+Friedman+Nemenyi.
 
 ### Mean rank across the three datasets (lower is better)
 
@@ -147,13 +144,11 @@ Friedman p < 0.003 on every dataset — the differences are real.
 
 ### Findings
 
-- **BM25 is the real win of the sprint.** `bm25_logreg` ranks 2nd on
-  every single dataset and is statistically indistinguishable from
-  `linear_svc_char` on SNIPS. CV macro-F1: SNIPS 0.984 (vs 0.984),
-  BANKING77 0.869 (vs 0.881), CLINC 0.931 (vs 0.934). The kicker is
-  cost — its model is **~50× smaller** (647 KB vs 9.7 MB on SNIPS) and
-  inference is **~3× faster** (p50 1.12 ms vs 3.53 ms). For
-  latency-sensitive deployments BM25 is the better choice. Okapi
+- **BM25 ranks second on every dataset.** `bm25_logreg` is statistically
+  indistinguishable from `linear_svc_char` on SNIPS. CV macro-F1:
+  SNIPS 0.984 (vs 0.984), BANKING77 0.869 (vs 0.881), CLINC 0.931 (vs
+  0.934). The model is **~50× smaller** (647 KB vs 9.7 MB on SNIPS) and
+  inference is **~3× faster** (p50 1.12 ms vs 3.53 ms). Okapi
   saturation (`tf*(k1+1)/(tf+k1*(...))` instead of raw TF) outperforms
   TF-IDF on bag-of-word features.
 
@@ -165,10 +160,11 @@ Friedman p < 0.003 on every dataset — the differences are real.
   rare-word variant). `lemmatized_logreg` follows the same pattern one
   step weaker.
 
-- **Skip-grams disappoint.** `skipgram_logreg` ranks 8-9 on every
-  dataset, 5-9 points behind contiguous n-grams. Standalone skip-grams
-  add noise faster than signal on short utterances. Worth retrying in
-  a `feature_union` with regular n-grams — not as the sole featurizer.
+- **Standalone skip-grams underperform contiguous n-grams.**
+  `skipgram_logreg` ranks 8-9 on every dataset, 5-9 points behind
+  contiguous n-grams; on short utterances they add noise faster than
+  signal. They contribute in a `feature_union` with regular n-grams
+  (see the union ablation below).
 
 - **Random projection is consistently bad.** Rank 10 on all three.
   Johnson-Lindenstrauss preserves *distance*, but text classification
@@ -185,17 +181,17 @@ Friedman p < 0.003 on every dataset — the differences are real.
   POS disambiguation matters more on noun-vs-verb-overloaded vocab
   than on these datasets.
 
-### Recommendation update
+### Recommendation
 
 - **Production text-classification deployment:** prefer `bm25_logreg`
   over `linear_svc_char` when model size or inference latency matter
   — accuracy is within ~1 point and you save ~50× on disk and 3× on
   inference. Reach for `linear_svc_char` only when the last 1-2 points
   of accuracy buy back the size/latency cost.
-- **High-class-count datasets (>50 intents):** add `stemmed_logreg` to
-  the comparison portfolio.
-- **POS / random-projection / standalone-skipgram:** keep them as
-  comparison baselines, not as defaults.
+- **High-class-count datasets (>50 intents):** include `stemmed_logreg`
+  in the comparison portfolio.
+- **POS, random-projection and standalone-skipgram:** comparison
+  baselines, not defaults.
 
 Full per-dataset tables and the Friedman+Nemenyi cliques are in
 [`reports/featurizer_bench_{snips,banking77,clinc}.md`](reports/).
@@ -203,10 +199,10 @@ The bench script is [`train_featurizer_bench.py`](train_featurizer_bench.py).
 
 ### Union ablation — do the weak featurizers contribute in combination?
 
-POS-sequence collapsed solo (rank 11). Skip-grams underperformed solo
-(rank 8-9). Both ought to be tested *as channels in a `feature_union`
-with a strong lexical channel* before being dismissed — the right
-ablation question. Four new union baselines:
+POS-sequence and skip-grams underperform in isolation. The
+complementary-signal question is whether they contribute *as channels
+in a `feature_union` with a strong lexical channel*. Four union
+baselines exercise that:
 
 - `union_skipgram_tfidf_logreg` — `tfidf_word + skipgram_word`
 - `union_pos_tfidf_logreg` — `tfidf_word + pos_sequence`
@@ -230,49 +226,43 @@ solo-skipgram / solo-POS on SNIPS / BANKING77 / CLINC, 3-fold CV:
 
 ### Findings
 
-- **Skip-grams contribute meaningfully in union.** Standalone they
-  ranked 8-9; paired with `tfidf_word` they jump to rank ~3.5, lifting
-  accuracy over plain `logreg` by **+0.0145 on BANKING77 and +0.0179 on
-  CLINC** (negligible on SNIPS). The complementary-signal hypothesis
-  holds for skip-grams: contiguous n-grams + skip-grams beat either
-  alone. The earlier "skip-grams disappoint" verdict was about the
-  wrong question — solo skip-grams underperform, but they are not
-  useless.
+- **Skip-grams contribute in union with TF-IDF.** Standalone they rank
+  8-9; paired with `tfidf_word` they rank ~3.5, lifting accuracy over
+  plain `logreg` by **+0.0145 on BANKING77 and +0.0179 on CLINC**
+  (negligible on SNIPS). Contiguous n-grams + skip-grams beat either
+  alone.
 
-- **POS in union with plain TF-IDF actively hurts.**
+- **POS in union with plain TF-IDF reduces accuracy.**
   `union_pos_tfidf_logreg` is *worse* than plain `logreg` on every
   dataset: **−0.0017 (SNIPS), −0.0050 (BANKING77), −0.0039 (CLINC)**.
   The POS channel adds noise faster than signal when the lexical
-  channel already discriminates well. The user-intuition "POS would
-  never work alone but might help in union" is half right — it does
-  not get rescued by plain word TF-IDF.
+  channel already discriminates well.
 
 - **POS in union with BM25 gives a marginal lift.**
   `union_bm25_pos_logreg` beats plain `bm25_logreg` by **+0.0002 /
   +0.0011 / +0.0005** — statistically tied on SNIPS, tiny real lift
   on BANKING77 / CLINC. The BM25-saturated lexical channel leaves
-  enough room for POS to contribute marginally. It also has the same
+  enough room for POS to contribute marginally. It carries the same
   cost advantage as `bm25_logreg`: ~50× smaller than `linear_svc_char`
   on CLINC (5.4 MB vs 99 MB) at within ~0.4 points of accuracy.
 
-- **POS in union with char n-grams** falls between the two —
-  marginal, never beats `bm25_logreg`.
+- **POS in union with char n-grams** sits between the two — marginal,
+  never beats `bm25_logreg`.
 
-- **The union does not overtake `linear_svc_char`** on any dataset.
-  Char n-grams + a calibrated linear SVM still wins on raw accuracy;
-  unions only displace it on the production-deployment recommendation
-  (smaller, faster).
+- **No union overtakes `linear_svc_char`** on any dataset. Char n-grams
+  + calibrated linear SVM wins raw accuracy; unions displace it only on
+  production-deployment cost.
 
-### Updated recommendation
+### Recommendation (union ablation)
 
-- **Highest accuracy:** still `linear_svc_char`.
+- **Highest accuracy:** `linear_svc_char`.
 - **Production deployment** (latency / size matters): `bm25_logreg`
-  remains the best simple choice; `union_bm25_pos_logreg` adds a
-  marginal lift if the `[postag]` extra is acceptable.
-- **High-class-count datasets:** add `union_skipgram_tfidf_logreg` to
-  the portfolio — its +1.5 / +1.8 point lift over plain `logreg` on
-  BANKING77 / CLINC is the most consistent ablation gain measured.
-- **Do not** combine POS with plain word TF-IDF — it hurts.
+  is the best simple choice; `union_bm25_pos_logreg` adds a marginal
+  lift if the `[postag]` extra is acceptable.
+- **High-class-count datasets:** include `union_skipgram_tfidf_logreg`
+  in the portfolio — its +1.5 / +1.8 point lift over plain `logreg`
+  on BANKING77 / CLINC is the most consistent ablation gain measured.
+- **POS combined with plain word TF-IDF reduces accuracy** — avoid.
 
 ## Multilingual intent classification
 
@@ -463,15 +453,12 @@ regenerated by `_build_report.py` from the latest report files.
 
 ## Caveats
 
-- The autoencoder portfolio entries in the table above predate the
-  `hidden_layer_sizes="auto"` default and the new `label_guided_*` /
-  `denoising_autoencoder_logreg` / `autoencoder_logreg_wide` / `_deep`
-  baselines. The next portfolio re-run will include those entries and
-  the numbers here will be re-measured. Search-tuned AE variants are
-  expected to recover most of the gap against the linear leader.
+- Search-tuned autoencoder variants would likely recover some of the
+  gap against `linear_svc_char`; only default-hyperparameter
+  configurations are reported here.
 - intents-for-eval test rows tagged as out-of-domain (no
-  `expected_intent`) are excluded. Adding OOD reject behaviour is on
-  the framework roadmap.
+  `expected_intent`) are excluded — the baselines have no OOD reject
+  behaviour.
 - BANKING77 and CLINC-150 trained models exceed the 5 MB commit
   threshold; the .joblib artefacts are not in the repo but the scripts
   are reproducible end-to-end.

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0a1](https://github.com/TigreGotico/jurebes/tree/0.3.0a1) (2026-05-23)
+
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.2.0a1...0.3.0a1)
+
+**Merged pull requests:**
+
+- feat: migrate to ovos-spec-tools [\#11](https://github.com/TigreGotico/jurebes/pull/11) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.2.0a1](https://github.com/TigreGotico/jurebes/tree/0.2.0a1) (2026-05-20)
 
 [Full Changelog](https://github.com/TigreGotico/jurebes/compare/V0.1.1...0.2.0a1)

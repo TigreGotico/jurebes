@@ -6,9 +6,13 @@ from typing import List, Tuple
 
 
 def load_hwu64(split: str = "train") -> Tuple[List[str], List[str]]:
-    """Load HWU64 intent benchmark via HuggingFace datasets."""
+    """Load HWU64 intent benchmark via HuggingFace datasets.
+
+    Source: ``DeepPavlov/hwu64`` (text field ``utterance``, integer
+    label field ``label``). Integer labels are stringified so downstream
+    baselines treat them as discrete classes.
+    """
     from jurebes.datasets.huggingface import load_hf
-    try:
-        return load_hf("DeepPavlov/hwu64", split=split, text_field="text", label_field="category")
-    except Exception:
-        return load_hf("liyucheng/hwu64", split=split, text_field="text", label_field="category")
+    X, y = load_hf("DeepPavlov/hwu64", split=split,
+                   text_field="utterance", label_field="label")
+    return X, [str(lbl) for lbl in y]

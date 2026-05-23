@@ -5,7 +5,6 @@ from __future__ import annotations
 from os.path import isfile
 from typing import Dict, List, Optional, Tuple, Union
 
-from langcodes import closest_match
 from ovos_bus_client.client import MessageBusClient
 from ovos_bus_client.message import Message
 from ovos_bus_client.session import Session, SessionManager
@@ -14,9 +13,9 @@ from ovos_plugin_manager.templates.pipeline import (
     ConfidenceMatcherPipeline,
     IntentHandlerMatch,
 )
+from ovos_spec_tools import closest_lang, standardize_lang
 from ovos_utils import flatten_list
 from ovos_utils.fakebus import FakeBus
-from ovos_utils.lang import standardize_lang_tag
 from ovos_utils.log import LOG
 
 from jurebes import IntentClassifier
@@ -39,11 +38,11 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         super().__init__(config=config or {}, bus=bus)
 
         core_config = Configuration()
-        self.lang = standardize_lang_tag(core_config.get("lang", "en-US"))
+        self.lang = standardize_lang(core_config.get("lang", "en-US"))
         langs = core_config.get("secondary_langs") or []
         if self.lang not in langs:
             langs.append(self.lang)
-        langs = [standardize_lang_tag(l) for l in langs]
+        langs = [standardize_lang(l) for l in langs]
 
         self.conf_high = self.config.get("conf_high") or 0.8
         self.conf_med = self.config.get("conf_med") or 0.6
@@ -84,7 +83,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
     def _match_level(self, utterances, limit, lang=None, message: Optional[Message] = None):
         LOG.debug(f"Jurebes matching confidence > {limit}")
         utterances = flatten_list(utterances)
-        lang = standardize_lang_tag(lang or self.lang)
+        lang = standardize_lang(lang or self.lang)
         match = self.calc_intent(utterances, lang, message)
         if match is not None and match.confidence > limit:
             skill_id = self._intent_to_skill.get(
@@ -144,7 +143,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         return samples
 
     def register_intent(self, message: Message):
-        lang = standardize_lang_tag(message.data.get("lang", self.lang))
+        lang = standardize_lang(message.data.get("lang", self.lang))
         if lang not in self.containers:
             return
         name = message.data["name"]
@@ -162,7 +161,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         self._fitted[lang] = False
 
     def register_entity(self, message: Message):
-        lang = standardize_lang_tag(message.data.get("lang", self.lang))
+        lang = standardize_lang(message.data.get("lang", self.lang))
         if lang not in self.containers or not self.enable_slots:
             return
         name = message.data["name"]
@@ -214,10 +213,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
 
     def _get_closest_lang(self, lang: str) -> Optional[str]:
         if self.containers:
-            lang = standardize_lang_tag(lang)
-            closest, score = closest_match(lang, list(self.containers.keys()))
-            if score < 10:
-                return closest
+            return closest_lang(lang, list(self.containers.keys()))
         return None
 
     def shutdown(self):

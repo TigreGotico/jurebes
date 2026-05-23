@@ -14,6 +14,7 @@ dependencies = [
     "scikit-learn>=1.4",
     "joblib",
     "ovos-utils",
+    "ovos-spec-tools",
     "ovos-bus-client",
     "ovos-config",
     "ovos-plugin-manager",

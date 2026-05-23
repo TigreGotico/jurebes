@@ -12,7 +12,7 @@ import joblib
 from sklearn.base import BaseEstimator
 from sklearn.calibration import CalibratedClassifierCV
 
-from jurebes.datasets.expansion import expand_template
+from ovos_spec_tools import expand as expand_template
 
 _WS_RE = re.compile(r"\s+")
 

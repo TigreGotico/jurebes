@@ -165,8 +165,8 @@ def test_canonical_hwu64_uses_correct_hf_id(monkeypatch):
     monkeypatch.setattr(hf_mod, "load_hf", _fake_load_hf_factory(seen))
     X, y = mod.load_hwu64("train")
     assert seen["name"] == "DeepPavlov/hwu64"
-    assert seen["text_field"] == "text"
-    assert seen["label_field"] == "category"
+    assert seen["text_field"] == "utterance"
+    assert seen["label_field"] == "label"
 
 
 def test_canonical_atis_uses_correct_hf_id(monkeypatch):

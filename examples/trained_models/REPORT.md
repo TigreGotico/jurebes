@@ -19,7 +19,10 @@ All numbers come from 5-fold stratified CV unless noted otherwise.
 | SNIPS                       |   7 | 13 084 | 1 400 | `benayas/snips` |
 | BANKING77                   |  77 | 10 003 | 3 080 | `banking77` |
 | CLINC-150                   | 150 | 15 250 | 5 500 | `clinc_oos` (`plus` config, OOD dropped) |
+| HWU64                       |  64 |  8 954 | 1 076 | `DeepPavlov/hwu64` |
+| ATIS                        |  17 |  4 972 |   884 | `tuetschek/atis` (rare classes <5 samples dropped) |
 | intents-for-eval (12 langs) |  50 |  ~2.2k | 1 700 in-domain | `OpenVoiceOS/intents-for-eval` |
+| massive-templates (51 langs) |  60 | ~13.8k | 2 974 | `OpenVoiceOS/massive-templates` |
 
 intents-for-eval ships with 1 000 Padatious-style templates per language
 plus a per-slot `examples` list; the loader expands each template into
@@ -32,20 +35,36 @@ the baselines have no OOD reject behaviour.
 
 ![Portfolio accuracy across canonical NLU benchmarks](reports/figures/01_portfolio_across_datasets.png)
 
-**`linear_svc_char` is the dominant baseline on every real-text-classification
-benchmark we tested:**
+Two baselines split the canonical-dataset wins between them:
 
 | dataset | best CV baseline | CV accuracy | held-out test accuracy | held-out macro-F1 |
 | --- | --- | ---: | ---: | ---: |
-| SNIPS                | `linear_svc_char` | 0.9856 | **0.9843** | 0.9843 |
-| BANKING77            | `linear_svc_char` | 0.8880 | **0.9062** | 0.9060 |
-| CLINC-150            | `linear_svc_char` | 0.9401 | **0.9164** | 0.9157 |
-| intents-for-eval avg | `linear_svc_char` | ~0.842 | — | — |
+| SNIPS                | `linear_svc_char`         | 0.9856 | **0.9843** | 0.9843 |
+| BANKING77            | `linear_svc_char`         | 0.8880 | **0.9062** | 0.9060 |
+| CLINC-150            | `linear_svc_char`         | 0.9401 | **0.9164** | 0.9157 |
+| HWU64                | `union_bm25_pos_logreg`   | 0.8683 | **0.8690** | 0.8681 |
+| ATIS                 | `bm25_logreg` (macro-F1)  | 0.7475 | 0.9446 acc / **0.6629** macro-F1 | — |
+| intents-for-eval     | `linear_svc_char` (10/12 langs), `union_bm25_pos_logreg` (en-US, es-ES) | ~0.842 | — | — |
+| massive-templates    | `linear_svc_char` (51/51 langs) | ~0.832 | — | — |
 
-Friedman+Nemenyi rejects the null hypothesis that the ten portfolio
-baselines are equivalent on every dataset (p ≤ 0.0003). Character n-grams
-+ calibrated linear SVM win the ranking decisively when training data
-is genuinely-spelled text.
+Friedman+Nemenyi rejects the null hypothesis that the portfolio
+baselines are equivalent on every dataset (p ≤ 0.0003). Two findings:
+
+- **`linear_svc_char` wins SNIPS, BANKING77, CLINC, and the 51-language
+  massive-templates sweep** — character n-grams + calibrated linear SVM
+  are the strongest on long-vocabulary supervised data.
+- **The BM25 family wins where data is sparser or class counts are
+  long-tailed.** `union_bm25_pos_logreg` takes HWU64 outright;
+  `bm25_logreg` wins ATIS on macro-F1 (the meaningful metric — ATIS has
+  one mega-class that dominates accuracy). `union_bm25_pos_logreg` also
+  wins 2 of 12 intents-for-eval languages (en-US, es-ES).
+
+`bm25_logreg` is consistently the **best-calibrated** baseline across
+every dataset measured (see the Calibration section below) and produces
+the **strongest CLINC-150 OOD detector** (calibrated top-1 confidence
+reaches ROC AUC 0.93 — vastly better than autoencoder reconstruction
+error at 0.60; see the OOD section). The production-deployment
+recommendation throughout this report is now BM25-led.
 
 ## Per-baseline behaviour
 
@@ -463,40 +482,39 @@ Per-dataset best-parameter dumps are in
 ## Out-of-domain detection on CLINC150
 
 CLINC150's `oos` split provides 1 000 genuine out-of-domain utterances.
-A `SklearnAutoencoder` (default `hidden_layer_sizes="auto"`, 200 max
-iter) trained on the 15 000 in-domain training TF-IDF vectors scores
-the 4 500-in + 1 000-OOD test set by per-sample reconstruction error.
+Four scoring strategies trained on in-domain CLINC, evaluated on the
+4 500-in + 1 000-OOD test set:
 
-| metric                       | value   |
-| ---                          | ---:    |
-| **ROC AUC**                  | **0.6004** |
-| TPR at FPR = 0.05            | 0.0810  |
-| TPR at FPR = 0.10            | 0.1600  |
-| TPR at FPR = 0.20            | 0.3040  |
-| median recon error in-domain | 0.00027 |
-| median recon error OOD       | 0.00029 |
+| OOD scoring method | ROC AUC | TPR @ FPR=0.05 | TPR @ FPR=0.10 | TPR @ FPR=0.20 |
+| --- | ---: | ---: | ---: | ---: |
+| **`bm25_logreg` top-1 confidence (1−conf)**     | **0.9254** | 0.6290 | 0.7910 | 0.9030 |
+| `bm25_logreg` top1 − top2 margin                | 0.9096     | 0.4690 | 0.7290 | 0.8930 |
+| `SklearnAutoencoder` reconstruction error       | 0.6004     | 0.0810 | 0.1600 | 0.3040 |
+| One-class SVM (rbf) on TF-IDF                   | 0.5529     | 0.0840 | 0.1550 | 0.2780 |
 
-**This is a weak result, and worth reporting honestly.** AUC 0.60 is
-only marginally above chance (0.50); at a 10 % false-positive rate the
-detector catches only 16 % of OOD utterances. The in-domain vs OOD
-median reconstruction-error gap lives in the fifth decimal place —
-TF-IDF vectors are sparse and short, so reconstruction loss saturates
-near zero for both in-domain and OOD inputs alike. The autoencoder
-cannot distinguish "input it was trained to reconstruct" from "input it
-has not seen" when both produce near-zero error.
+Three findings:
 
-The cookbook page documenting AE-based OOD detection holds as a
-*method demonstration*; on CLINC the method does not deliver a useful
-detector. Likely stronger signals on the same data:
+- **The calibration result pays off directly.** `bm25_logreg`'s
+  calibrated top-1 confidence is the strongest OOD detector tested by
+  a wide margin — AUC 0.9254, catching 79 % of OOD utterances at a
+  10 % false-positive rate. The same property that made BM25 the
+  best-calibrated baseline (calibration section above) makes its
+  confidence a meaningful reject signal.
+- **The top1 − top2 margin is nearly as good** (AUC 0.9096), useful as
+  a secondary score when raw confidence is uncalibrated for a given
+  baseline.
+- **Unsupervised approaches do not work on TF-IDF intent data.** The
+  autoencoder (AUC 0.6004) and one-class SVM (0.5529) are barely
+  above chance. TF-IDF vectors are sparse and short — reconstruction
+  loss saturates near zero for both in-domain and OOD inputs alike
+  (the median-error gap lives in the fifth decimal place), and an
+  RBF-kernel one-class SVM cannot separate the two distributions in
+  high-dimensional sparse space.
 
-- a calibrated `bm25_logreg`'s top-1 confidence as the OOD score
-  (BM25 was the best-calibrated baseline above; below a confidence
-  threshold, treat as OOD);
-- a margin between the top-1 and top-2 calibrated probabilities;
-- a dedicated one-class SVM trained on in-domain TF-IDF.
-
-These remain unmeasured here; the cookbook caveat is the practical
-takeaway.
+**Practical recommendation: use the calibrated top-1 confidence of a
+production `bm25_logreg` as the OOD reject signal.** Pick a threshold
+from the ROC table above (FPR ≤ 0.10 catches ~80 % of OOD with ~10 %
+false positives on in-domain).
 
 ## MASSIVE-templates — 51-language breadth
 

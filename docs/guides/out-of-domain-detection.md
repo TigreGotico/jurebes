@@ -2,85 +2,80 @@
 
 An intent classifier always returns *some* intent for any input. To reject utterances unrelated to the training inventory, layer an out-of-domain (OOD) detector on top.
 
-## Approach: autoencoder reconstruction error
+The CLINC150 benchmark (`oos` label) is the canonical OOD evaluation. Four scoring strategies were compared on it; results inform the recommendation below.
 
-A bottleneck autoencoder trained to reconstruct in-domain TF-IDF vectors will reconstruct in-domain inputs well and OOD inputs poorly. The reconstruction error becomes an OOD score.
+| OOD scoring method | ROC AUC | TPR @ FPR=0.05 | TPR @ FPR=0.10 |
+| --- | ---: | ---: | ---: |
+| `bm25_logreg` top-1 confidence (1 − conf) | **0.9254** | 0.6290 | 0.7910 |
+| `bm25_logreg` top1 − top2 margin | 0.9096 | 0.4690 | 0.7290 |
+| Autoencoder reconstruction error | 0.6004 | 0.0810 | 0.1600 |
+| One-class SVM (rbf) on TF-IDF | 0.5529 | 0.0840 | 0.1550 |
 
-`jurebes.featurizers.SklearnAutoencoder` exposes `reconstruction_error(X)` returning per-row MSE:
+See `examples/trained_models/reports/clinc_ood_alternatives.md` for the full bench.
+
+## Recommended approach: calibrated confidence
+
+A well-calibrated multi-class classifier already exposes the OOD signal directly: when the top class probability is low, the input is unlike anything in the training distribution. `bm25_logreg` calibrated with `CalibratedClassifierCV` is the strongest detector measured here.
 
 ```python
-import numpy as np
-from sklearn.pipeline import Pipeline
-from jurebes.featurizers import SklearnAutoencoder, tfidf_word
+from collections import defaultdict
+from jurebes import IntentClassifier
+from jurebes.baselines import BASELINES
 
-# 1. Fit the AE on in-domain TF-IDF vectors.
-pipe = Pipeline([
-    ("feat", tfidf_word()),
-    ("ae",   SklearnAutoencoder(hidden_layer_sizes=(64, 16, 64), random_state=0)),
-])
-pipe.fit(X_train)
+clf = IntentClassifier(BASELINES.build("bm25_logreg"))
+grouped = defaultdict(list)
+for x, lbl in zip(X_train, y_train):
+    grouped[lbl].append(x)
+for lbl, samples in grouped.items():
+    clf.add_intent(lbl, samples)
+clf.fit()
 
-# 2. Pick a threshold from the in-domain reconstruction-error distribution.
-feat = pipe.named_steps["feat"]
-ae   = pipe.named_steps["ae"]
-
-train_errs = ae.reconstruction_error(feat.transform(X_train))
-threshold  = float(np.percentile(train_errs, 95))   # 95th-percentile of in-domain errors
-print(f"OOD threshold = {threshold:.4f}")
-
-# 3. Score new utterances.
-def is_ood(utt: str) -> bool:
-    err = float(ae.reconstruction_error(feat.transform([utt]))[0])
-    return err > threshold
+def ood_score(utt: str) -> float:
+    proba = clf.estimator.predict_proba([utt])[0]
+    return float(1.0 - proba.max())          # higher = more OOD
 ```
-
-The threshold percentile controls the in-domain false-reject rate: 95 % means 5 % of legitimate in-domain inputs will be incorrectly flagged as OOD on the training distribution.
 
 ## Choosing the threshold
 
-The 95th percentile is a starting point. For a principled choice, hold out a labelled mix of in-domain and OOD utterances and compute ROC/AUC:
+Hold out a labelled mix of in-domain and OOD utterances and pick the threshold that hits your target false-positive rate:
 
 ```python
-from sklearn.metrics import roc_auc_score, roc_curve
+import numpy as np
+from sklearn.metrics import roc_curve
 
-scores = ae.reconstruction_error(feat.transform(X_eval))
-labels = np.array([0 if y == "in_domain" else 1 for y in y_eval])
-print(f"AUC = {roc_auc_score(labels, scores):.3f}")
-
+scores = np.array([ood_score(x) for x in X_eval])
+labels = np.array([0 if y != "oos" else 1 for y in y_eval])
 fpr, tpr, thr = roc_curve(labels, scores)
-# pick the threshold that hits a target FPR, e.g. 5 %
+
 target_fpr = 0.05
-idx = np.argmax(fpr >= target_fpr)
+idx = int(np.argmax(fpr >= target_fpr))
 threshold = float(thr[idx])
 ```
 
-The CLINC150 dataset includes an `oos` (out-of-scope) label, making it the canonical OOD benchmark. See [cookbook/ood-with-autoencoder.md](../cookbook/ood-with-autoencoder.md) for an end-to-end CLINC150 worked example.
+Top-1 minus top-2 *margin* is a near-equivalent variant. `1 − top-1` had a slight edge in the bench.
 
 ## Combining with the intent classifier
 
-Two policies:
-
-1. **Hard gate.** Score every incoming utterance with the AE before the intent classifier; reject when over threshold.
-2. **Soft signal.** Run both, surface the AE score alongside the confidence, and decide downstream.
-
-The hard gate is simplest:
-
 ```python
-def predict_with_ood(utt: str):
-    if is_ood(utt):
-        return None
-    return clf.predict(utt)
+def predict_with_ood(utt: str, threshold: float):
+    proba = clf.estimator.predict_proba([utt])[0]
+    if (1.0 - proba.max()) > threshold:
+        return None                          # reject as OOD
+    return clf.estimator.classes_[proba.argmax()]
 ```
 
-## Alternative: confidence thresholding
+Hard gate (reject) vs soft signal (surface the score alongside the prediction and decide downstream) are both valid — pick based on whether downstream code can handle `None`.
 
-When the intent classifier is well-calibrated, a low confidence is itself a coarse OOD signal — see [confidence-thresholds.md](confidence-thresholds.md). The autoencoder approach is sharper because it does not rely on the multi-class probability simplex summing to 1.
+## Alternative: autoencoder reconstruction error
+
+A bottleneck autoencoder trained to reconstruct in-domain TF-IDF vectors can be used as an OOD score via `SklearnAutoencoder.reconstruction_error(X)`. On CLINC150 it reached AUC 0.60 — barely above chance — because short utterances produce sparse TF-IDF vectors that reconstruct near-trivially in both regimes. Use it as a method demonstration; for production, prefer calibrated confidence. See [cookbook/ood-with-autoencoder.md](../cookbook/ood-with-autoencoder.md).
 
 ## Caveats
 
-- The autoencoder has its own hidden-layer hyperparameters. The defaults `(64, 16, 64)` work on small corpora; widen the hidden layers for richer vocabularies.
-- Reconstruction error grows with the *novelty of vocabulary*, not necessarily with semantic OOD-ness. Inputs full of unseen words flag as OOD even if intent-relevant.
-- For deeper OOD discussion, see [theory/dimensionality-reduction.md](../theory/dimensionality-reduction.md).
+- The classifier must be calibrated. `IntentClassifier` wraps non-probabilistic baselines in `CalibratedClassifierCV` by default; verify your baseline exposes `predict_proba` before relying on probability magnitudes.
+- Confidence-based OOD detection inherits the classifier's biases — if a class is under-represented in training, low-confidence in-domain utterances will be wrongly rejected. Stratify your OOD threshold evaluation across all intents.
+- For deeper discussion of low-confidence prediction, see [confidence-thresholds.md](confidence-thresholds.md).
+- For dimensionality-reduction-based novelty detection, see [theory/dimensionality-reduction.md](../theory/dimensionality-reduction.md).
 
 ---
 - Back to [docs index](../index.md)

@@ -7,12 +7,14 @@ A decision tree for picking among the 48 registered baselines without running a 
 | situation | first try | second try | avoid |
 | --- | --- | --- | --- |
 | <100 samples total | `logreg`, `linear_svc`, `nb_complement` | `linear_svc_char` for typo tolerance | tree ensembles, MLP, RBF SVM |
-| 100–10 000 samples | `linear_svc`, `logreg` | `rbf_svc`, `hist_gbm`, `voting_soft` | full grid search before a baseline picked |
+| 100–10 000 samples | `linear_svc`, `logreg`, `bm25_logreg` | `rbf_svc`, `hist_gbm`, `voting_soft` | full grid search before a baseline picked |
 | >10 000 samples | `hashing_sgd_log` (memory), `linear_svc` | `hist_gbm`, online SGD variants | dense kernel SVM, full LSA over a huge vocab |
 | many intents (>50) | `linear_svc_char`, `ovr_linear_svc` | `linear_svc` | one-vs-one strategies (quadratic in classes) |
 | latency-critical (<5 ms) | `linear_svc`, `nb_multinomial`, `hashing_sgd_log` | `nb_complement` | `rbf_svc`, `stacking`, `mlp_shallow` |
 | imbalanced classes | `nb_complement`, `linear_svc` (`class_weight="balanced"`) | `complement_nb_count` | accuracy as primary metric |
-| need calibrated probas | `logreg`, `nb_*`, any `_cal()`-wrapped baseline | `voting_soft` | raw RF/GBM (use `calibrate="always"`) |
+| need calibrated probas | `bm25_logreg`, `logreg`, `nb_*`, any `_cal()`-wrapped baseline | `voting_soft` | raw RF/GBM (use `calibrate="always"`) |
+| need OOD rejection | `bm25_logreg` (best CLINC OOD AUC 0.93 via top-1 confidence) | calibrated `logreg` | autoencoder reconstruction error on short text |
+| highly imbalanced classes (macro-F1 priority) | `bm25_logreg`, `union_bm25_pos_logreg` | `nb_complement` | accuracy as primary metric |
 | typo tolerance | `linear_svc_char`, `logreg_char`, `union_logreg` | `hashing_char` (custom build) | word-only TF-IDF |
 | dict-of-string features | `categorical_logreg`, `categorical_random_forest` | custom pipeline w/ `CategoricalVectorizer` | text-only baselines |
 
@@ -83,7 +85,7 @@ These are orders of magnitude, not measurements. For your dataset run `compare(.
 
 ## A pragmatic default
 
-If you have no other information about the dataset: start with `linear_svc` and use `compare` to verify against `logreg`, `nb_complement`, and `linear_svc_char` over five folds.
+If you have no other information about the dataset: start with `linear_svc_char` and use `compare` to verify against `linear_svc`, `logreg`, `nb_complement`, and `bm25_logreg` over five folds. Across the benchmarked corpora `linear_svc_char` wins more often than any other single baseline, but `bm25_logreg` and `union_bm25_pos_logreg` win when macro-F1 on imbalanced classes matters or when OOD rejection is part of the deployment — see `examples/trained_models/REPORT.md` for the full split.
 
 See also: [theory/linear-classifiers.md](../theory/linear-classifiers.md), [theory/text-featurization.md](../theory/text-featurization.md), [reference/baselines.md](../reference/baselines.md).
 

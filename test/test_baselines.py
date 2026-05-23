@@ -66,7 +66,11 @@ def _missing(module: str) -> bool:
 # the affected baseline; with the extras installed it fits the toy fixture.
 _SKIP_LINGUISTIC = set()
 if _missing("brill_postaggers"):
-    _SKIP_LINGUISTIC |= {"pos_sequence_logreg", "word_pos_logreg"}
+    _SKIP_LINGUISTIC |= {
+        "pos_sequence_logreg", "word_pos_logreg",
+        "union_pos_tfidf_logreg", "union_pos_char_logreg",
+        "union_bm25_pos_logreg",
+    }
 if _missing("nltk"):
     _SKIP_LINGUISTIC |= {"stemmed_logreg"}
 if _missing("simplemma"):
@@ -123,7 +127,7 @@ def test_registry_resolve_selector():
 
 
 def test_resolve_all_returns_full_registry():
-    assert len(BASELINES.resolve("@all")) == 61
+    assert len(BASELINES.resolve("@all")) == 65
     assert len(BASELINES.resolve("@all")) == len(list(BASELINES.names()))
 
 

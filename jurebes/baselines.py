@@ -241,6 +241,25 @@ BASELINE_SPECS: Dict[str, Callable[[], Pipeline]] = {
     "lemmatized_logreg": lambda: (
         _require("simplemma", "lemma"),
         _p(lemmatized_tfidf("en"), LogisticRegression(max_iter=1000)))[1],
+    # ── feature unions exercising the new channels ─────────────────
+    # POS / skip-grams collapsed in isolation; in a union with a strong
+    # lexical channel they may still contribute.
+    "union_skipgram_tfidf_logreg": lambda: _p(
+        feature_union(tfidf_word(), skipgram_word()),
+        LogisticRegression(max_iter=1000),
+    ),
+    "union_pos_tfidf_logreg": lambda: (
+        _require("brill_postaggers", "postag"),
+        _p(feature_union(tfidf_word(), pos_sequence("en")),
+           LogisticRegression(max_iter=1000)))[1],
+    "union_pos_char_logreg": lambda: (
+        _require("brill_postaggers", "postag"),
+        _p(feature_union(tfidf_char(), pos_sequence("en")),
+           LogisticRegression(max_iter=1000)))[1],
+    "union_bm25_pos_logreg": lambda: (
+        _require("brill_postaggers", "postag"),
+        _p(feature_union(bm25_word(), pos_sequence("en")),
+           LogisticRegression(max_iter=1000)))[1],
 }
 
 
@@ -269,7 +288,11 @@ _GROUPS: Dict[str, Set[str]] = {
         "sgd_log", "sgd_hinge", "sgd_modified_huber",
     },
     "strategy": {"ovr_linear_svc", "ovo_linear_svc"},
-    "feature_engineering": {"text_stats_logreg", "union_text_stats_logreg"},
+    "feature_engineering": {
+        "text_stats_logreg", "union_text_stats_logreg",
+        "union_skipgram_tfidf_logreg", "union_pos_tfidf_logreg",
+        "union_pos_char_logreg", "union_bm25_pos_logreg",
+    },
     "discriminant": {"lda_classifier", "qda_classifier"},
     "categorical": {"categorical_logreg", "categorical_random_forest"},
     "linguistic": {

@@ -27,15 +27,15 @@ REPORTS.mkdir(exist_ok=True)
 PORTFOLIO = [
     "linear_svc_char",          # reference: current overall winner
     "logreg",                   # reference: plain word TF-IDF + logreg
-    "nb_multinomial",           # reference: fast-mode floor
-    "skipgram_logreg",
-    "bm25_logreg",
-    "bm25_linear_svc",
-    "random_projection_logreg",
-    "pos_sequence_logreg",
-    "word_pos_logreg",
-    "stemmed_logreg",
-    "lemmatized_logreg",
+    "bm25_logreg",              # reference: 2nd-place in solo bench
+    "skipgram_logreg",          # solo skip-grams (mid-pack reference)
+    "pos_sequence_logreg",      # solo POS (collapses; reference)
+    # New union ablations — do the weak solo featurizers contribute in a
+    # union with a strong lexical channel?
+    "union_skipgram_tfidf_logreg",
+    "union_pos_tfidf_logreg",
+    "union_pos_char_logreg",
+    "union_bm25_pos_logreg",
 ]
 
 _LOADERS = {

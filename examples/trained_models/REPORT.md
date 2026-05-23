@@ -374,14 +374,17 @@ distinguishable as worse.
 ## Recommendations by use case
 
 - **Voice-assistant intent recognition (OVOS pipeline plugin).** Train
-  with `linear_svc_char` if slot extraction also matters (the same
-  baseline produces calibrated probabilities for the `conf_high`/
-  `conf_med`/`conf_low` thresholds via `CalibratedClassifierCV`). Pair
-  with `slots/crf` if the `[slots-crf]` extra is acceptable; fall back
-  to `slots/sklearn_iob` otherwise.
-- **Latency-critical embedded deployment.** `nb_multinomial` or `logreg`
-  with the default `tfidf_word()` featurizer; p95 ≤ 10 ms on
-  commodity CPU even at 77-class scale.
+  with `linear_svc_char` if peak accuracy matters; prefer `bm25_logreg`
+  when the OPM `conf_high`/`conf_med`/`conf_low` thresholds need
+  reliable probabilities (it is the best-calibrated baseline measured —
+  see the calibration section). Pair with `slots/crf` if the
+  `[slots-crf]` extra is acceptable; fall back to `slots/sklearn_iob`
+  otherwise.
+- **Latency-critical embedded deployment.** `bm25_logreg` for the best
+  accuracy/latency/size trade-off (≤10 ms p95 at every dataset scale,
+  ~50× smaller than `linear_svc_char`, best calibrated probabilities).
+  `nb_multinomial` only when sub-millisecond inference is required and
+  poor probability quality is acceptable.
 - **Hot domain bootstrap (~6 hand-labeled samples per intent).** Use
   the active-learning loop in `examples/llm_augmentation/` with
   `linear_svc_char` as the oracle baseline, or — once it lands — the
@@ -392,6 +395,108 @@ distinguishable as worse.
   classes without per-language tuning. Use it as the cross-language
   control baseline; reach for `voting_soft` only when ensembling
   buys ≥ 1 point on the specific language of interest.
+
+## Calibration analysis
+
+Reports `ece` (expected calibration error) and `brier` (mean squared
+error of probability vs one-hot ground truth) alongside accuracy for
+the eight headline baselines on each canonical dataset. Lower is
+better; 0 = perfect calibration.
+
+| dataset   | best-calibrated baseline    | ECE     | worst-calibrated baseline | ECE     |
+| ---       | ---                         | ---:    | ---                        | ---:    |
+| SNIPS     | `bm25_logreg`               | 0.0044  | `nb_multinomial`           | 0.1337  |
+| BANKING77 | `union_bm25_pos_logreg`     | 0.0157  | `nb_multinomial`           | 0.5879  |
+| CLINC-150 | `bm25_logreg`               | 0.0305  | `nb_multinomial`           | 0.7540  |
+
+Three findings:
+
+- **BM25 is consistently the best-calibrated baseline** across all
+  three datasets, with ECE between 0.004 and 0.031. Combined with the
+  size/latency advantages reported earlier, this strengthens the
+  production-deployment recommendation: `bm25_logreg` has the most
+  honest probabilities of any baseline tested.
+- **`nb_multinomial` is consistently the worst-calibrated** — ECE
+  0.59 on BANKING77 and 0.75 on CLINC despite ~0.90 accuracy. The
+  independence assumption produces wildly overconfident probabilities
+  that do not reflect empirical accuracy; never use NB confidence as a
+  reject signal.
+- **`linear_svc_char` is well-calibrated on small data and only
+  partly-calibrated on large data.** ECE rises from 0.016 (SNIPS) to
+  0.155 (CLINC). `CalibratedClassifierCV` does useful work but
+  100-150-class problems saturate the simple sigmoid wrap. For
+  confidence-threshold gates on CLINC-scale inventories, prefer BM25
+  + LogReg's native calibrated probabilities over the wrap.
+
+## Hyperparameter search vs default
+
+Random search (`n_iter=15`, `cv=3`, `scoring="f1_macro"`) over
+`spaces.for_baseline()` for the two top baselines across the canonical
+datasets, compared against default-hyperparameter macro-F1.
+
+| dataset   | baseline           | default | tuned   | Δ        | wall (s) |
+| ---       | ---                | ---:    | ---:    | ---:     | ---:     |
+| SNIPS     | `linear_svc_char`  | 0.9842  | 0.9858  | **+0.0016** | 11 |
+| SNIPS     | `bm25_logreg`      | 0.9840  | 0.9847  | +0.0007  | 3        |
+| BANKING77 | `linear_svc_char`  | 0.8811  | 0.8860  | **+0.0048** | 41 |
+| BANKING77 | `bm25_logreg`      | 0.8690  | 0.8710  | +0.0020  | 23       |
+| CLINC-150 | `linear_svc_char`  | 0.9344  | 0.9166  | **−0.0178** | 84 |
+| CLINC-150 | `bm25_logreg`      | 0.9307  | 0.9065  | **−0.0241** | 72 |
+
+Two findings:
+
+- **Search helps on small and medium datasets** — small wins on SNIPS
+  (~0.001–0.002 points), real wins on BANKING77 (+0.0048 for
+  `linear_svc_char`). Search tends to land on `feat__ngram_range=(2,4)`
+  and `clf__C` in the [2.0, 4.0] band.
+- **15 iterations is not enough for 150-class CLINC** — tuned
+  configurations *regress* by 1.8–2.4 macro-F1 points. Random search
+  picks parameters whose 3-fold CV looks good but generalises worse
+  than the default. Practical guidance: scale `n_iter` with the search
+  space and class count. The framework's defaults are well-suited to
+  high-class-count problems; speculative search needs more budget than
+  15 iterations to challenge them.
+
+Per-dataset best-parameter dumps are in
+[`reports/hyperparam_search.md`](reports/hyperparam_search.md).
+
+## Out-of-domain detection on CLINC150
+
+CLINC150's `oos` split provides 1 000 genuine out-of-domain utterances.
+A `SklearnAutoencoder` (default `hidden_layer_sizes="auto"`, 200 max
+iter) trained on the 15 000 in-domain training TF-IDF vectors scores
+the 4 500-in + 1 000-OOD test set by per-sample reconstruction error.
+
+| metric                       | value   |
+| ---                          | ---:    |
+| **ROC AUC**                  | **0.6004** |
+| TPR at FPR = 0.05            | 0.0810  |
+| TPR at FPR = 0.10            | 0.1600  |
+| TPR at FPR = 0.20            | 0.3040  |
+| median recon error in-domain | 0.00027 |
+| median recon error OOD       | 0.00029 |
+
+**This is a weak result, and worth reporting honestly.** AUC 0.60 is
+only marginally above chance (0.50); at a 10 % false-positive rate the
+detector catches only 16 % of OOD utterances. The in-domain vs OOD
+median reconstruction-error gap lives in the fifth decimal place —
+TF-IDF vectors are sparse and short, so reconstruction loss saturates
+near zero for both in-domain and OOD inputs alike. The autoencoder
+cannot distinguish "input it was trained to reconstruct" from "input it
+has not seen" when both produce near-zero error.
+
+The cookbook page documenting AE-based OOD detection holds as a
+*method demonstration*; on CLINC the method does not deliver a useful
+detector. Likely stronger signals on the same data:
+
+- a calibrated `bm25_logreg`'s top-1 confidence as the OOD score
+  (BM25 was the best-calibrated baseline above; below a confidence
+  threshold, treat as OOD);
+- a margin between the top-1 and top-2 calibrated probabilities;
+- a dedicated one-class SVM trained on in-domain TF-IDF.
+
+These remain unmeasured here; the cookbook caveat is the practical
+takeaway.
 
 ## MASSIVE-templates — 51-language breadth
 

@@ -2,6 +2,15 @@
 
 CLINC150's `plus` configuration includes an `oos` (out-of-scope) label specifically for benchmarking OOD detectors. This cookbook trains an autoencoder on in-domain CLINC utterances and evaluates reconstruction-error-based OOD detection via ROC/AUC.
 
+> **Caveat: measured ROC AUC on CLINC is only 0.60** — barely above
+> chance (see `examples/trained_models/reports/clinc_ood.md`). TF-IDF
+> vectors are sparse and short, so reconstruction loss saturates near
+> zero for both in-domain and OOD inputs, and the recon-error gap lives
+> in the fifth decimal place. The script below is a method
+> demonstration; for production OOD detection on CLINC-like data,
+> prefer a calibrated `bm25_logreg`'s top-1 confidence as the reject
+> signal, or a one-class SVM on TF-IDF.
+
 ## Prerequisites
 
 ```bash

@@ -64,19 +64,24 @@ def main():
     summary_rows = []
     timings = []
     for lang in LANGS:
-        t0 = time.perf_counter()
-        try:
-            report = run_one(lang)
-            ok = True
-        except Exception as e:
-            report = f"# intents-for-eval ({lang}) — failed\n\n`{type(e).__name__}: {e}`"
-            ok = False
-        elapsed = time.perf_counter() - t0
-        timings.append((lang, elapsed))
-
         out = REPORTS / f"intents_for_eval_{lang}.md"
-        out.write_text(report, encoding="utf-8")
-        print(f"[{lang}] wrote {out.name} ({elapsed:.1f}s) ok={ok}")
+        # Resumable: a kill costs at most the in-progress language.
+        if out.exists() and "— failed" not in out.read_text(encoding="utf-8"):
+            report = out.read_text(encoding="utf-8")
+            elapsed = 0.0
+            print(f"[{lang}] skip — report already present", flush=True)
+        else:
+            t0 = time.perf_counter()
+            try:
+                report = run_one(lang)
+                ok = True
+            except Exception as e:
+                report = f"# intents-for-eval ({lang}) — failed\n\n`{type(e).__name__}: {e}`"
+                ok = False
+            elapsed = time.perf_counter() - t0
+            out.write_text(report, encoding="utf-8")
+            print(f"[{lang}] wrote {out.name} ({elapsed:.1f}s) ok={ok}", flush=True)
+        timings.append((lang, elapsed))
 
         intent_name, intent_acc, intent_f1 = _extract_best_intent_row(report)
         slot_name, slot_prec, slot_f1, slot_em = _extract_best_slot_row(report)

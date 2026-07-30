@@ -3,7 +3,7 @@
 **J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
 A classical-ML text classification research framework. Intent
-classification is the flagship application; the core works for any
+classification is the flagship application, but the core works for any
 single-label text task (spam, sentiment, topic, language-ID).
 
 > *Named in memory of Jurebes, the best dog.*
@@ -68,7 +68,7 @@ single-label text task (spam, sentiment, topic, language-ID).
 - [Active-learning primitives](reference/active-learning.md)
 - [Semi-supervised primitives](reference/semi-supervised.md)
 - [Search subsystem](search.md)
-- [Slot taggers](slots.md) — dictionary, template, sklearn IOB, hybrid, CRF (`TAGGERS` registry)
+- [Slot taggers](slots.md): dictionary, template, sklearn IOB, hybrid, CRF (`TAGGERS` registry)
 - [Slot tagger reference](reference/slots.md)
 - [OVOS pipeline plugin](opm.md)
 
@@ -85,5 +85,5 @@ single-label text task (spam, sentiment, topic, language-ID).
 ## Other
 
 - [Research framework deep dive](research.md)
-- [Tutorial scripts library](../examples/tutorials/README.md) — runnable concept demos.
+- [Tutorial scripts library](../examples/tutorials/README.md): runnable concept demos.
 - [Migration from previous APIs](../MIGRATION.md)

@@ -1,19 +1,19 @@
 # OVOS pipeline plugin
 
-`jurebes.opm:JurebesPipeline` is a `ConfidenceMatcherPipeline` registered under the entry-point `ovos-jurebes-pipeline-plugin`.
+`jurebes.opm:JurebesPipeline` is a `ConfidenceMatcherPipeline` registered under the entry point `ovos-jurebes-pipeline-plugin`.
 
-## Behaviour
+## Behavior
 
-- One `IntentClassifier` per configured language.
-- Listens on the standard padatious messagebus events:
+- One `IntentClassifier` runs per configured language.
+- The plugin listens on the standard padatious messagebus events:
   - `padatious:register_intent`
   - `padatious:register_entity`
   - `detach_intent`
   - `detach_skill`
   - `mycroft.ready`
-- Exact normalised matches are short-circuited via an internal `{(lang, norm_utt): intent}` dict; everything else goes through the sklearn estimator.
-- Lazy fit: any registration after `mycroft.ready` triggers a re-fit on next match.
-- Session-aware: respects `SessionManager.blacklisted_intents` / `blacklisted_skills`.
+- An internal `{(lang, norm_utt): intent}` dict short-circuits exact normalized matches. Everything else goes through the sklearn estimator.
+- Fit is lazy. Any registration after `mycroft.ready` triggers a re-fit on the next match.
+- The plugin respects `SessionManager.blacklisted_intents` and `blacklisted_skills`.
 
 ## Configuration
 
@@ -36,12 +36,12 @@ In `mycroft.conf` (JSON):
 }
 ```
 
-`baseline` accepts any name registered in `BASELINES`. `enable_slots` toggles the `SklearnIOBTagger`. The three `conf_*` thresholds map onto the `ConfidenceMatcherPipeline` high/med/low buckets.
+`baseline` accepts any name registered in `BASELINES`. `enable_slots` toggles the `SklearnIOBTagger`. The three `conf_*` thresholds map onto the `ConfidenceMatcherPipeline` high, medium, and low buckets.
 
 ## Caveats
 
-- Slot extraction comes only from the trained `SklearnIOBTagger`; disabling slots removes all slot extraction.
-- Exact matches are handled in-process via a `{(lang, norm_utt): intent}` cache. For typo tolerance, pick a char-ngram baseline such as `logreg_char`, `union_logreg`, or `linear_svc_char`.
+- Slot extraction comes only from the trained `SklearnIOBTagger`. Disabling slots removes all slot extraction.
+- The plugin handles exact matches in-process through a `{(lang, norm_utt): intent}` cache. For typo tolerance, pick a char-ngram baseline such as `logreg_char`, `union_logreg`, or `linear_svc_char`.
 
 ---
-[← back to docs index](index.md)
+[Home](index.md)

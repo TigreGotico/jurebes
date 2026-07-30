@@ -1,9 +1,9 @@
 # Slot tagging
 
-Jurebes exposes five pluggable slot-tagging strategies through the
-`TAGGERS` registry. They share a common protocol — `add_entity`,
-`fit`, `predict`, `tag`, `save`, `load` — and can be swapped under any
-`IntentClassifier`.
+Jurebes exposes six pluggable slot-tagging strategies through the
+`TAGGERS` registry. They share a common protocol (`add_entity`,
+`fit`, `predict`, `tag`, `save`, `load`) and you can swap any of them
+under an `IntentClassifier`.
 
 ## Strategy comparison
 
@@ -16,7 +16,7 @@ Jurebes exposes five pluggable slot-tagging strategies through the
 | `hybrid`        | per stage | yes          | high             | scikit-learn      |
 | `crf`           | sklearn-crfsuite | yes   | highest          | `jurebes[slots-crf]` |
 
-## `DictionaryTagger` — gazetteer regex
+## `DictionaryTagger`: gazetteer regex
 
 ```python
 from jurebes.slots import DictionaryTagger
@@ -27,11 +27,11 @@ t.predict("weather in paris")        # {"city": "paris"}
 t.predict("weather in new york")     # {"city": "new york"}
 ```
 
-Single-word entries are word-boundary anchored; multi-token entries are
-matched as exact substrings. Case-insensitive by default; flip
-`case_sensitive=True` for strict matching. No training required.
+Single-word entries are word-boundary anchored. Multi-token entries are
+matched as exact substrings. Matching is case-insensitive by default; set
+`case_sensitive=True` for strict matching. This tagger needs no training.
 
-## `TemplateTagger` — `{slot}` regex templates
+## `TemplateTagger`: `{slot}` regex templates
 
 ```python
 from jurebes.slots import TemplateTagger
@@ -42,15 +42,15 @@ t.fit()
 t.predict("temperature in berlin")   # {"city": "berlin"}
 ```
 
-`{slot}` placeholders become named regex groups; `(a|b)` becomes a
-grouped alternation. The first matching template wins
-(longest-template-first for determinism).
+`{slot}` placeholders become named regex groups, and `(a|b)` becomes a
+grouped alternation. The first matching template wins. Templates are
+tried longest-first for determinism.
 
-## `SklearnIOBTagger` — per-token sklearn classifier
+## `SklearnIOBTagger`: per-token sklearn classifier
 
-Default pipeline: `DictVectorizer` + `LogisticRegression`. Trains on
-token-level IOB tags expanded from `{entity}` placeholders in the
-intent samples.
+The default pipeline is `DictVectorizer` plus `LogisticRegression`. It
+trains on token-level IOB tags expanded from `{entity}` placeholders in
+the intent samples.
 
 ```python
 from jurebes.slots import SklearnIOBTagger
@@ -71,7 +71,7 @@ Regex: `re.findall(r"\w+|[^\w\s]", text)`. No nltk.
 `lower`, `suffix2/3`, `prefix2/3`, `is_upper`, `is_title`,
 `is_digit`, `has_digit`, `bos`, `eos`, `prev_word`, `next_word`.
 
-## `HybridCascadeTagger` — dict → template → IOB cascade
+## `HybridCascadeTagger`: dict to template to IOB cascade
 
 ```python
 from jurebes.slots import HybridCascadeTagger
@@ -84,10 +84,10 @@ h.predict("weather in paris")        # {"city": "paris"}
 h.predict("weather in berlin")       # {"city": "berlin"} via template fallback
 ```
 
-Constituent taggers run in order; earlier taggers win on key collisions.
-Pass a custom list via `HybridCascadeTagger(taggers=[...])`.
+Constituent taggers run in order, and earlier taggers win on key collisions.
+Pass a custom list through `HybridCascadeTagger(taggers=[...])`.
 
-## `KNNTagger` — nearest-utterance tag transfer
+## `KNNTagger`: nearest-utterance tag transfer
 
 ```python
 from jurebes.slots import KNNTagger
@@ -98,16 +98,16 @@ t.fit({"weather": ["weather in {city}", "forecast for {city}"]})
 t.predict("weather in tokyo")        # {"city": "tokyo"}
 ```
 
-Training utterances are TF-IDF-vectorised (char 3-5 n-grams by default);
-at predict time the input is matched against the `k` nearest neighbours
-via `sklearn.neighbors.NearestNeighbors`, and their IOB tags are
-majority-voted onto the input by token position. The pattern transfers
-to unseen entity values whenever the surrounding context matches a
-trained template — `tokyo` above was never registered as a `city`.
+Training utterances are TF-IDF-vectorized (char 3-5 n-grams by default).
+At predict time, the tagger matches the input against the `k` nearest
+neighbors through `sklearn.neighbors.NearestNeighbors`, then majority-votes
+their IOB tags onto the input by token position. The pattern transfers to
+unseen entity values whenever the surrounding context matches a trained
+template. In the example above, `tokyo` was never registered as a `city`.
 
 Tune the surface vectoriser by passing your own `vectorizer=` argument.
 
-## `CRFTagger` — optional sklearn-crfsuite
+## `CRFTagger`: optional sklearn-crfsuite
 
 Install the extra:
 
@@ -123,8 +123,8 @@ t.add_entity("name", ["bob", "alice"])
 t.fit({"name": ["my name is {name}", "call me {name}"]})
 ```
 
-Same feature dictionaries as `SklearnIOBTagger`; under the hood trains
-`sklearn_crfsuite.CRF(algorithm='lbfgs', max_iterations=100)`.
+This tagger uses the same feature dictionaries as `SklearnIOBTagger`.
+Under the hood, it trains `sklearn_crfsuite.CRF(algorithm='lbfgs', max_iterations=100)`.
 
 ## Registry
 
@@ -145,21 +145,21 @@ clf = IntentClassifier(tagger="dictionary")
 
 ## When to use which
 
-- **`dictionary`** — closed-set slots (timezones, ISO codes, known
+- **`dictionary`**: closed-set slots (timezones, ISO codes, known
   device names). Zero training cost.
-- **`template`** — small command grammars with predictable phrasings.
+- **`template`**: small command grammars with predictable phrasings.
   Handles unseen slot values cleanly.
-- **`sklearn_iob`** — broader coverage with moderate training data;
-  generalises beyond seen templates.
-- **`hybrid`** — production default. Dictionary catches the easy
-  cases; template handles known phrasings; IOB picks up the rest.
-- **`crf`** — when sequence structure matters and the extra dependency
+- **`sklearn_iob`**: broader coverage with moderate training data.
+  Generalizes beyond seen templates.
+- **`hybrid`**: production default. Dictionary catches the easy
+  cases, template handles known phrasings, and IOB picks up the rest.
+- **`crf`**: when sequence structure matters and the extra dependency
   is acceptable.
 
 ## Persistence
 
-All taggers expose `save(path)` / `load(path)`. `DictionaryTagger`
-and `TemplateTagger` persist as JSON; the sklearn-backed taggers and
+All taggers expose `save(path)` and `load(path)`. `DictionaryTagger`
+and `TemplateTagger` persist as JSON. The sklearn-backed taggers and
 `HybridCascadeTagger` use joblib.
 
 ## Benchmark harness
@@ -181,4 +181,4 @@ print(result.to_markdown())
 ```
 
 ---
-[← back to docs index](index.md)
+[Home](index.md)

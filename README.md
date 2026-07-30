@@ -2,11 +2,11 @@
 
 **J**ust-sklearn **U**tility for **R**eproducible **E**valuation of **B**aselines, **E**stimators and **S**olvers.
 
-A classical-ML text classification research framework — pure scikit-learn, no NLTK, no padacioso.
+A classical-ML text classification research framework, built on plain scikit-learn. It uses no NLTK and no padacioso.
 
-Jurebes lets you wire **any sklearn featurizer + any sklearn classifier** behind a small text-classification API, plus a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
+Jurebes wires **any sklearn featurizer** to **any sklearn classifier** behind a small text-classification API. It also includes a registry of ready-to-use baselines, a benchmark harness, dataset loaders, a CLI, and an OVOS pipeline plugin.
 
-Intent classification is the flagship application — but the core is domain-agnostic. Spam, sentiment, topic, language-ID and any other single-label text task run on the same API; see [the general text classification guide](docs/guides/general-text-classification.md).
+Intent classification is the main use case, but the core works with any single-label text task. Spam, sentiment, topic, and language-ID tasks run on the same API. See [the general text classification guide](docs/guides/general-text-classification.md).
 
 > *Named in memory of Jurebes, the best dog.*
 
@@ -37,29 +37,29 @@ result = clf.predict("hi there")
 print(result.intent, result.confidence, result.entities)
 ```
 
-Pass any sklearn `Pipeline` / estimator instead of a baseline name; Jurebes auto-wraps non-probabilistic estimators with `CalibratedClassifierCV` so `predict_proba` always works.
+Pass any sklearn `Pipeline` or estimator instead of a baseline name. Jurebes wraps non-probabilistic estimators with `CalibratedClassifierCV` automatically, so `predict_proba` always works.
 
 ## Documentation
 
 Full documentation lives under [`docs/`](docs/):
 
-- [Getting started](docs/getting-started/01-what-is-jurebes.md) — install, first classifier, core concepts, troubleshooting.
-- [Guides](docs/guides/choosing-a-baseline.md) — choosing a baseline, slots, calibration, reproducibility, debugging.
-- [Theory](docs/theory/intent-classification.md) — classical-ML foundations: featurization, linear models, kernels, ensembles, statistical comparison.
-- [API reference](docs/reference/index.md) — every public module, function, dataclass, and CLI flag.
+- [Getting started](docs/getting-started/01-what-is-jurebes.md): install, first classifier, core concepts, troubleshooting.
+- [Guides](docs/guides/choosing-a-baseline.md): choosing a baseline, slots, calibration, reproducibility, debugging.
+- [Theory](docs/theory/intent-classification.md): classical-ML foundations: featurization, linear models, kernels, ensembles, statistical comparison.
+- [API reference](docs/reference/index.md): every public module, function, dataclass, and CLI flag.
 
 ## Research
 
 Jurebes is built as a research framework:
 
-- 48 named baselines tagged into groups (`linear`, `kernel`, `tree`, `naive_bayes`, `neural`, `reduced_dim`, `online`, `strategy`, `feature_engineering`, `ensemble`, `discriminant`, `categorical`). Includes neural-bottleneck autoencoder pipelines (`autoencoder_*`) and dict-input categorical pipelines (`categorical_*`).
-- Hyperparameter search subsystem (`jurebes.search`) supporting grid, random, successive-halving, Bayesian (optional), and genetic (optional) backends.
-- Benchmark harness with multi-metric scoring (`f1_macro`, `accuracy`, `log_loss`, `top_k_accuracy`, ...) and pooled tail-latency percentiles.
+- 48 named baselines tagged into groups (`linear`, `kernel`, `tree`, `naive_bayes`, `neural`, `reduced_dim`, `online`, `strategy`, `feature_engineering`, `ensemble`, `discriminant`, `categorical`). This includes neural-bottleneck autoencoder pipelines (`autoencoder_*`) and dict-input categorical pipelines (`categorical_*`).
+- A hyperparameter search subsystem (`jurebes.search`) with grid, random, successive-halving, Bayesian (optional), and genetic (optional) backends.
+- A benchmark harness with multi-metric scoring (`f1_macro`, `accuracy`, `log_loss`, `top_k_accuracy`, ...) and pooled tail-latency percentiles.
 - See [`docs/research.md`](docs/research.md) and [`docs/search.md`](docs/search.md).
 
 ## Baselines
 
-`BASELINES` is a registry of 48 named factories covering naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM, bagging), shallow MLP, voting, stacking, reduced-dim (LSA/NMF/LDA/autoencoder), multi-class strategy wrappers (OvR/OvO), discriminant analysis, text-statistics composites, and dict-input categorical pipelines. List them:
+`BASELINES` is a registry of 48 named factories. It covers naive Bayes, logistic regression, linear/RBF SVMs, kNN, online learners (SGD, perceptron, passive-aggressive, ridge), tree ensembles (random forest, extra trees, gradient boosting, HistGBM, bagging), a shallow MLP, voting, stacking, reduced-dim methods (LSA/NMF/LDA/autoencoder), multi-class strategy wrappers (OvR/OvO), discriminant analysis, text-statistics composites, and dict-input categorical pipelines. List them:
 
 ```bash
 jurebes list-baselines
@@ -125,9 +125,9 @@ jurebes list-baselines
 | categorical | `categorical_logreg` |
 | categorical | `categorical_random_forest` |
 
-Rows total more than 48 because some baselines (e.g. `bagging_logreg`, `sgd_log`, `hashing_sgd_hinge`) belong to multiple groups. The registry itself contains 48 unique factories.
+Rows total more than 48 because some baselines (for example `bagging_logreg`, `sgd_log`, `hashing_sgd_hinge`) belong to multiple groups. The registry itself holds 48 unique factories.
 
-The `categorical_*` pipelines accept `list[dict[str, str]]` rather than raw text; they are exposed via the programmatic API only and are skipped by text-fixture benchmarks.
+The `categorical_*` pipelines accept `list[dict[str, str]]` instead of raw text. They are available through the programmatic API only, and text-fixture benchmarks skip them.
 
 Register your own:
 
@@ -155,12 +155,12 @@ result = compare(["logreg", "linear_svc", "nb_multinomial"], X, y, k=5)
 print(to_markdown(result))
 ```
 
-`RunResult` captures accuracy, macro/micro F1, per-class F1, training time, predict-latency p50/p95/p99, model size, and confusion matrix.
+`RunResult` captures accuracy, macro/micro F1, per-class F1, training time, predict-latency p50/p95/p99, model size, and the confusion matrix.
 
 ## Slots
 
-Five pluggable taggers covering dictionary, template, sklearn IOB,
-hybrid cascade, and CRF (optional extra). All are accessible through
+Five pluggable taggers cover dictionary, template, sklearn IOB,
+hybrid cascade, and CRF (optional extra). All are available through
 the `TAGGERS` registry and share the same protocol.
 
 ```python
@@ -182,17 +182,17 @@ TAGGERS.names()  # ['dictionary', 'template', 'sklearn_iob', 'hybrid', 'crf']
 
 See [`docs/`](docs/) for the research guide, slot tagger details, and the OVOS deployment notes:
 
-- [`docs/research.md`](docs/research.md) — adding baselines, benchmarks, reports.
-- [`docs/search.md`](docs/search.md) — hyperparameter search backends.
-- [`docs/slots.md`](docs/slots.md) — IOB slot tagger and token features.
-- [`docs/opm.md`](docs/opm.md) — OVOS pipeline plugin configuration.
-- [`MIGRATION.md`](MIGRATION.md) — porting from prior `JurebesIntentContainer` API.
+- [`docs/research.md`](docs/research.md): adding baselines, benchmarks, reports.
+- [`docs/search.md`](docs/search.md): hyperparameter search backends.
+- [`docs/slots.md`](docs/slots.md): IOB slot tagger and token features.
+- [`docs/opm.md`](docs/opm.md): OVOS pipeline plugin configuration.
+- [`MIGRATION.md`](MIGRATION.md): porting from the prior `JurebesIntentContainer` API.
 
 ## Examples
 
-Runnable cell-celled scripts live in [`examples/notebooks/`](examples/notebooks/):
+Runnable, cell-marked scripts live in [`examples/notebooks/`](examples/notebooks/):
 
-- [`snips_quickstart.py`](examples/notebooks/snips_quickstart.py) — fetch SNIPS, train, evaluate.
-- [`banking77_full_research_flow.py`](examples/notebooks/banking77_full_research_flow.py) — compare baselines, run Friedman+Nemenyi, tune the winner, evaluate on holdout.
+- [`snips_quickstart.py`](examples/notebooks/snips_quickstart.py): fetch SNIPS, train, evaluate.
+- [`banking77_full_research_flow.py`](examples/notebooks/banking77_full_research_flow.py): compare baselines, run Friedman+Nemenyi, tune the winner, evaluate on a holdout set.
 
-Both require `pip install jurebes[hf,bench-plot]`.
+Both examples need `pip install jurebes[hf,bench-plot]`.

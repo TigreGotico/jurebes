@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 pytest.importorskip("ovos_plugin_manager")
@@ -5,6 +7,7 @@ pytest.importorskip("ovos_plugin_manager")
 from ovos_bus_client.message import Message
 from ovos_utils.fakebus import FakeBus
 
+import jurebes.opm as opm_mod
 from jurebes.opm import JurebesPipeline
 
 
@@ -109,3 +112,46 @@ def test_opm_exact_match():
     match = pipe.match_high(["hello"], "en-US", Message("test"))
     assert match is not None
     assert match.match_type == "skill.hello:hello"
+
+
+def _register_hello_and_joke(pipe, bus):
+    bus.emit(Message("padatious:register_intent", {
+        "name": "skill.hello:hello",
+        "lang": "en-US",
+        "samples": ["hello", "hi"],
+    }))
+    bus.emit(Message("padatious:register_intent", {
+        "name": "skill.joke:joke",
+        "lang": "en-US",
+        "samples": ["tell joke", "say joke"],
+    }))
+
+
+def test_opm_exact_match_default_skips_classifier():
+    # default behavior (exact_match unset -> True): classifier must NOT be
+    # consulted when a registered training utterance has an exact hit.
+    bus = FakeBus()
+    pipe = JurebesPipeline(bus=bus, config={"baseline": "logreg", "enable_slots": False})
+    _register_hello_and_joke(pipe, bus)
+
+    with patch.object(opm_mod, "_calc_jurebes", wraps=opm_mod._calc_jurebes) as spy:
+        match = pipe.match_high(["hello"], "en-US", Message("test"))
+        assert match is not None
+        assert match.match_type == "skill.hello:hello"
+        spy.assert_not_called()
+
+
+def test_opm_exact_match_false_always_consults_classifier():
+    # with exact_match=False, the classifier must be consulted even for a
+    # registered training utterance that would otherwise be an exact hit.
+    bus = FakeBus()
+    pipe = JurebesPipeline(bus=bus, config={"baseline": "logreg", "enable_slots": False,
+                                             "exact_match": False})
+    _register_hello_and_joke(pipe, bus)
+    assert pipe.exact_match is False
+
+    with patch.object(opm_mod, "_calc_jurebes", wraps=opm_mod._calc_jurebes) as spy:
+        match = pipe.match_low(["hello"], "en-US", Message("test"))
+        assert match is not None
+        assert match.match_type == "skill.hello:hello"
+        spy.assert_called()

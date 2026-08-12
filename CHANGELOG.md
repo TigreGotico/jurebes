@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0a1](https://github.com/TigreGotico/jurebes/tree/0.4.0a1) (2026-08-12)
+
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a2...0.4.0a1)
+
+**Merged pull requests:**
+
+- feat: configurable exact-match shortcut \(exact\_match\) [\#15](https://github.com/TigreGotico/jurebes/pull/15) ([JarbasAl](https://github.com/JarbasAl))
+
 ## [0.3.0a2](https://github.com/TigreGotico/jurebes/tree/0.3.0a2) (2026-07-30)
 
 [Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a1...0.3.0a2)

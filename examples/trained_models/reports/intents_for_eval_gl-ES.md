@@ -1,0 +1,58 @@
+# intents-for-eval (gl-ES) training report
+
+- intents: **50**
+- templates: **1000** → **2188** after slot expansion
+- entities: **24**
+- test utterances: **1700** in-domain (+50 OOD rows excluded)
+
+## Intent classification
+
+Train on Padatious-style templates, evaluate top-1 intent on the test split.
+
+| baseline | accuracy | macro_f1 |
+|---|---|---|
+| linear_svc_char | 0.8447 | 0.8477 |
+| bm25_logreg | 0.8288 | 0.8320 |
+| union_bm25_pos_logreg | 0.8288 | 0.8315 |
+| voting_soft | 0.8182 | 0.8217 |
+| label_guided_logreg | 0.8176 | 0.8211 |
+| union_skipgram_tfidf_logreg | 0.8176 | 0.8209 |
+| linear_svc | 0.8171 | 0.8220 |
+| ovr_linear_svc | 0.8171 | 0.8220 |
+| logreg_char | 0.8129 | 0.8133 |
+| label_guided_linear_svc | 0.8129 | 0.8170 |
+| logreg | 0.7906 | 0.7957 |
+| nb_multinomial | 0.6724 | 0.6575 |
+| autoencoder_logreg | 0.4682 | 0.4245 |
+| denoising_autoencoder_logreg | 0.1388 | 0.0656 |
+
+**winning baseline (intent):** `linear_svc_char`
+
+## Slot extraction
+
+Train each tagger on the same templates + entity gazetteer; evaluate against the gold `expected_slots` on the test split.
+
+| tagger | slot_precision | slot_recall | slot_f1 | exact_match | n_test |
+| --- | --- | --- | --- | --- | --- |
+| dictionary | 0.8271 | 0.8129 | 0.8199 | 0.8041 | 1700 |
+| template | 0.6724 | 0.4335 | 0.5271 | 0.6112 | 1700 |
+| sklearn_iob | 0.8079 | 0.8266 | 0.8171 | 0.8429 | 1700 |
+| knn | 0.5827 | 0.5562 | 0.5692 | 0.6835 | 1700 |
+| hybrid | 0.6550 | 0.8652 | 0.7456 | 0.7159 | 1700 |
+| crf | 0.8767 | 0.8481 | 0.8621 | 0.8718 | 1700 |
+
+## Per-domain intent accuracy
+
+Using the winning baseline `linear_svc_char`.
+| domain | n | accuracy |
+|---|---|---|
+| calendar | 166 | 0.8072 |
+| communication | 172 | 0.8663 |
+| media | 168 | 0.8036 |
+| navigation | 178 | 0.8764 |
+| news | 168 | 0.8095 |
+| search_qa | 170 | 0.9118 |
+| smarthome | 170 | 0.8647 |
+| system_control | 166 | 0.8012 |
+| timers_alarms | 174 | 0.8678 |
+| weather | 168 | 0.8333 |

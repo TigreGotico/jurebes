@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jurebes"
+dynamic = ["version"]
+description = "Classical-ML intent classification research framework"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "JarbasAI", email = "jarbasai@mailfence.com" }]
+dependencies = [
+    "scikit-learn>=1.4",
+    "joblib",
+    "ovos-utils",
+    "ovos-spec-tools",
+    "ovos-bus-client",
+    "ovos-config",
+    "ovos-plugin-manager",
+    "langcodes",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+e2e = [
+    "ovoscope",
+    "ovos-core",
+    "ovos-skill-hello-world",
+    "pytest",
+    "pytest-timeout",
+]
+hf = ["datasets"]
+search-bayes = ["scikit-optimize>=0.10"]
+search-genetic = ["sklearn-genetic-opt>=0.10"]
+search-all = ["scikit-optimize>=0.10", "sklearn-genetic-opt>=0.10"]
+bench-plot = ["matplotlib"]
+slots-crf = ["sklearn-crfsuite>=0.5"]
+postag = ["brill-postagger", "nltk"]
+stem = ["nltk"]
+lemma = ["simplemma"]
+linguistic = ["brill-postagger", "nltk", "simplemma"]
+
+[project.scripts]
+jurebes = "jurebes.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/OpenVoiceOS/jurebes"
+
+[project.entry-points."opm.pipeline"]
+"ovos-jurebes-pipeline-plugin" = "jurebes.opm:JurebesPipeline"
+
+[tool.setuptools.dynamic]
+version = {attr = "jurebes.version.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jurebes*"]

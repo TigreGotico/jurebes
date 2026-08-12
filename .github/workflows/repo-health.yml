@@ -1,0 +1,15 @@
+name: Repo Health
+
+on:
+  pull_request:
+    branches: [dev, master]
+  workflow_dispatch:
+
+jobs:
+  repo_health:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/repo-health.yml@dev
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
+    with:
+      version_file: 'jurebes/version.py'

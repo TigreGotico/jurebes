@@ -1,100 +1,39 @@
 # Changelog
 
-## [V0.1.1a13](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a13) (2023-04-29)
+## [0.4.0a1](https://github.com/TigreGotico/jurebes/tree/0.4.0a1) (2026-08-12)
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a12...V0.1.1a13)
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a2...0.4.0a1)
 
-## [V0.1.1a12](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a12) (2023-04-29)
+**Merged pull requests:**
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a11...V0.1.1a12)
+- feat: configurable exact-match shortcut \(exact\_match\) [\#15](https://github.com/TigreGotico/jurebes/pull/15) ([JarbasAl](https://github.com/JarbasAl))
 
-## [V0.1.1a11](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a11) (2023-04-29)
+## [0.3.0a2](https://github.com/TigreGotico/jurebes/tree/0.3.0a2) (2026-07-30)
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a10...V0.1.1a11)
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a1...0.3.0a2)
 
-## [V0.1.1a10](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a10) (2023-04-29)
+**Merged pull requests:**
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a9...V0.1.1a10)
+- docs: rewrite README in Simplified Technical English [\#13](https://github.com/TigreGotico/jurebes/pull/13) ([JarbasAl](https://github.com/JarbasAl))
 
-## [V0.1.1a9](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a9) (2023-04-29)
+## [0.3.0a1](https://github.com/TigreGotico/jurebes/tree/0.3.0a1) (2026-05-23)
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a8...V0.1.1a9)
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.2.0a1...0.3.0a1)
 
-## [V0.1.1a8](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a8) (2023-04-29)
+**Merged pull requests:**
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a7...V0.1.1a8)
+- feat: migrate to ovos-spec-tools [\#11](https://github.com/TigreGotico/jurebes/pull/11) ([JarbasAl](https://github.com/JarbasAl))
 
-## [V0.1.1a7](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a7) (2023-04-28)
+## [0.2.0a1](https://github.com/TigreGotico/jurebes/tree/0.2.0a1) (2026-05-20)
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a6...V0.1.1a7)
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/V0.1.1...0.2.0a1)
 
-## [V0.1.1a6](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a6) (2023-04-25)
+**Merged pull requests:**
 
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a5...V0.1.1a6)
-
-## [V0.1.1a5](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a5) (2023-04-25)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a4...V0.1.1a5)
-
-## [V0.1.1a4](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a4) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a3...V0.1.1a4)
-
-## [V0.1.1a3](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a3) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a2...V0.1.1a3)
-
-## [V0.1.1a2](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a2) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.1a1...V0.1.1a2)
-
-## [V0.1.1a1](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.1a1) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.0...V0.1.1a1)
-
-## [V0.1.0](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.0) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.0a4...V0.1.0)
-
-## [V0.1.0a4](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.0a4) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.0a3...V0.1.0a4)
-
-## [V0.1.0a3](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.0a3) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.0a2...V0.1.0a3)
-
-## [V0.1.0a2](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.0a2) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.1.0a1...V0.1.0a2)
-
-## [V0.1.0a1](https://github.com/OpenVoiceOS/jurebes/tree/V0.1.0a1) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.1...V0.1.0a1)
-
-## [V0.0.1](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.1) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.1a2...V0.0.1)
-
-## [V0.0.1a2](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.1a2) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.1a1...V0.0.1a2)
-
-## [V0.0.1a1](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.1a1) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.0...V0.0.1a1)
-
-## [V0.0.0](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.0) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.0a2...V0.0.0)
-
-## [V0.0.0a2](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.0a2) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/V0.0.0a1...V0.0.0a2)
-
-## [V0.0.0a1](https://github.com/OpenVoiceOS/jurebes/tree/V0.0.0a1) (2023-04-24)
-
-[Full Changelog](https://github.com/OpenVoiceOS/jurebes/compare/4b61557b9bbe4371c5337046e3ab9fefe43d8005...V0.0.0a1)
+- feat: expand OVOS template syntax in add\_intent / add\_entity [\#9](https://github.com/TigreGotico/jurebes/pull/9) ([JarbasAl](https://github.com/JarbasAl))
+- Update heinrichreimer/github-changelog-generator-action action to v2.4 [\#4](https://github.com/TigreGotico/jurebes/pull/4) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency python to 3.14 [\#3](https://github.com/TigreGotico/jurebes/pull/3) ([renovate[bot]](https://github.com/apps/renovate))
+- Configure Renovate [\#2](https://github.com/TigreGotico/jurebes/pull/2) ([renovate[bot]](https://github.com/apps/renovate))
 
 
 

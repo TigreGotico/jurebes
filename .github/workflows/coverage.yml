@@ -1,0 +1,19 @@
+name: Code Coverage
+
+on:
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/coverage.yml@dev
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
+    with:
+      python_version: '3.11'
+      coverage_source: 'jurebes'
+      test_path: 'test/'
+      install_extras: ''
+      min_coverage: 0

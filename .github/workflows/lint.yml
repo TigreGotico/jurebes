@@ -1,0 +1,16 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [dev, master]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: OpenVoiceOS/gh-automations/.github/workflows/lint.yml@dev
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      MATRIX_TOKEN: ${{ secrets.MATRIX_TOKEN }}
+    with:
+      ruff: true
+      pre_commit: false

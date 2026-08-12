@@ -49,6 +49,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         self.conf_low = self.config.get("conf_low") or 0.4
         self.baseline = self.config.get("baseline", "linear_svc")
         self.enable_slots = bool(self.config.get("enable_slots", True))
+        self.exact_match = bool(self.config.get("exact_match", True))
 
         self.containers: Dict[str, IntentClassifier] = {}
         for lang in langs:
@@ -202,7 +203,7 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
 
         results = []
         for utt in utterances:
-            exact = self._exact.get((lang, _normalize(utt)))
+            exact = self._exact.get((lang, _normalize(utt))) if self.exact_match else None
             if exact and exact not in sess.blacklisted_intents:
                 results.append(_Match(exact, 1.0, {}, utt))
                 continue

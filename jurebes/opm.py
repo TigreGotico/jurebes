@@ -60,6 +60,11 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
 
         self._exact: Dict[Tuple[str, str], str] = {}
         self._fitted: Dict[str, bool] = {lang: False for lang in langs}
+        # Records the training failure (if any) for a lang so calc_intent can
+        # raise a single clear error instead of silently serving an unfitted
+        # classifier (which logs "classifier not fitted" per-inference and
+        # returns dishonest/no-match results forever).
+        self._train_error: Dict[str, str] = {}
 
         self.bus.on("padatious:register_intent", self.register_intent)
         self.bus.on("padatious:register_entity", self.register_entity)
@@ -73,13 +78,34 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         self.max_words = 50
         LOG.debug("Loaded Jurebes intent parser.")
 
+    # Raised by IntentClassifier.fit() when fewer than 2 intents are
+    # registered yet. This is the normal not-ready state at startup for
+    # nearly every real install (skills register intents one bus message at
+    # a time) — it is NOT a training failure and must never be recorded as
+    # one, or every fresh boot would look like a broken classifier.
+    _NOT_READY_ERR = "need at least 2 intent classes to fit"
+
     def handle_initial_train(self, message: Message):
         for lang, clf in self.containers.items():
             try:
                 clf.fit()
                 self._fitted[lang] = True
+                self._train_error.pop(lang, None)
             except Exception as e:
-                LOG.error(f"Jurebes initial train failed for {lang}: {e}")
+                self._on_fit_failure(lang, e)
+
+    def _on_fit_failure(self, lang: str, e: Exception) -> None:
+        self._fitted[lang] = False
+        if isinstance(e, ValueError) and self._NOT_READY_ERR in str(e):
+            LOG.debug(f"Jurebes not ready to train yet for {lang}: {e}")
+            return
+        # Log once here. The classifier stays unfitted; _maybe_fit will not
+        # keep retrying a failure that is deterministic given the current
+        # training data (e.g. NuSVC "specified nu is infeasible"), so this
+        # is the only log line for this failure until new training data
+        # arrives via register_intent/register_entity.
+        LOG.error(f"Jurebes initial train failed for {lang}: {e}")
+        self._train_error[lang] = str(e)
 
     def _match_level(self, utterances, limit, lang=None, message: Optional[Message] = None):
         LOG.debug(f"Jurebes matching confidence > {limit}")
@@ -160,6 +186,9 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
             if "{" not in s:
                 self._exact[(lang, _normalize(s))] = name
         self._fitted[lang] = False
+        # New training data may make a previously-infeasible fit succeed;
+        # allow _maybe_fit to try again.
+        self._train_error.pop(lang, None)
 
     def register_entity(self, message: Message):
         lang = standardize_lang(message.data.get("lang", self.lang))
@@ -175,14 +204,22 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
         except ValueError:
             pass
         self._fitted[lang] = False
+        self._train_error.pop(lang, None)
 
     def _maybe_fit(self, lang: str):
-        if not self._fitted.get(lang):
-            try:
-                self.containers[lang].fit()
-                self._fitted[lang] = True
-            except Exception as e:
-                LOG.debug(f"Jurebes lazy fit skipped for {lang}: {e}")
+        if self._fitted.get(lang):
+            return
+        if lang in self._train_error:
+            # Already failed once for the current training data; retrying
+            # every call would just reproduce the same deterministic error
+            # and spam the log. calc_intent raises a single clear error
+            # instead.
+            return
+        try:
+            self.containers[lang].fit()
+            self._fitted[lang] = True
+        except Exception as e:
+            self._on_fit_failure(lang, e)
 
     def calc_intent(self, utterances: List[str], lang: Optional[str] = None,
                     message: Optional[Message] = None):
@@ -198,19 +235,30 @@ class JurebesPipeline(ConfidenceMatcherPipeline):
             return None
 
         sess = SessionManager.get(message)
-        self._maybe_fit(lang)
         clf = self.containers[lang]
 
         results = []
         for utt in utterances:
+            # Exact matching needs no fitted classifier — check it first so
+            # a broken/unfitted classifier for this lang never blocks exact
+            # matches from registered training utterances.
             exact = self._exact.get((lang, _normalize(utt))) if self.exact_match else None
             if exact and exact not in sess.blacklisted_intents:
                 results.append(_Match(exact, 1.0, {}, utt))
                 continue
-            r = _calc_jurebes(utt, clf, tuple(sess.blacklisted_intents), tuple(sess.blacklisted_skills))
-            if r is not None:
-                results.append(r)
+            results.extend(self._classifier_matches(lang, clf, utt, sess))
         return max(results, key=lambda r: r.confidence) if results else None
+
+    def _classifier_matches(self, lang: str, clf: IntentClassifier, utt: str, sess) -> List["_Match"]:
+        self._maybe_fit(lang)
+        if not self._fitted.get(lang):
+            # Classifier is unusable for this lang (never trained, or a
+            # genuine fit failure was already recorded and logged once by
+            # _on_fit_failure). Return no-match rather than raising or
+            # re-attempting/re-logging a deterministic failure per call.
+            return []
+        r = _calc_jurebes(utt, clf, tuple(sess.blacklisted_intents), tuple(sess.blacklisted_skills))
+        return [r] if r is not None else []
 
     def _get_closest_lang(self, lang: str) -> Optional[str]:
         if self.containers:

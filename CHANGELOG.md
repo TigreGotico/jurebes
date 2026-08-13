@@ -1,39 +1,12 @@
 # Changelog
 
-## [0.4.0a1](https://github.com/TigreGotico/jurebes/tree/0.4.0a1) (2026-08-12)
+## [0.4.1a1](https://github.com/TigreGotico/jurebes/tree/0.4.1a1) (2026-08-13)
 
-[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a2...0.4.0a1)
-
-**Merged pull requests:**
-
-- feat: configurable exact-match shortcut \(exact\_match\) [\#15](https://github.com/TigreGotico/jurebes/pull/15) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.3.0a2](https://github.com/TigreGotico/jurebes/tree/0.3.0a2) (2026-07-30)
-
-[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.3.0a1...0.3.0a2)
+[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.4.0...0.4.1a1)
 
 **Merged pull requests:**
 
-- docs: rewrite README in Simplified Technical English [\#13](https://github.com/TigreGotico/jurebes/pull/13) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.3.0a1](https://github.com/TigreGotico/jurebes/tree/0.3.0a1) (2026-05-23)
-
-[Full Changelog](https://github.com/TigreGotico/jurebes/compare/0.2.0a1...0.3.0a1)
-
-**Merged pull requests:**
-
-- feat: migrate to ovos-spec-tools [\#11](https://github.com/TigreGotico/jurebes/pull/11) ([JarbasAl](https://github.com/JarbasAl))
-
-## [0.2.0a1](https://github.com/TigreGotico/jurebes/tree/0.2.0a1) (2026-05-20)
-
-[Full Changelog](https://github.com/TigreGotico/jurebes/compare/V0.1.1...0.2.0a1)
-
-**Merged pull requests:**
-
-- feat: expand OVOS template syntax in add\_intent / add\_entity [\#9](https://github.com/TigreGotico/jurebes/pull/9) ([JarbasAl](https://github.com/JarbasAl))
-- Update heinrichreimer/github-changelog-generator-action action to v2.4 [\#4](https://github.com/TigreGotico/jurebes/pull/4) ([renovate[bot]](https://github.com/apps/renovate))
-- Update dependency python to 3.14 [\#3](https://github.com/TigreGotico/jurebes/pull/3) ([renovate[bot]](https://github.com/apps/renovate))
-- Configure Renovate [\#2](https://github.com/TigreGotico/jurebes/pull/2) ([renovate[bot]](https://github.com/apps/renovate))
+- fix: fail honestly when initial training fails instead of emitting unfitted predictions [\#17](https://github.com/TigreGotico/jurebes/pull/17) ([JarbasAl](https://github.com/JarbasAl))
 
 
 
